@@ -75,6 +75,7 @@ td.v input.addr{text-align:left;font-size:13px}
     <span class="sw" style="background:#fff2b3"></span><b>노란 칸</b> = 입력
     <span class="sw" style="background:#f2f4f7"></span><b>회색 칸</b> = 기본값(바꿔도 됨)
     <span class="sw" style="background:#fff"></span><b>흰 칸</b> = 자동 계산
+    <b style="margin-left:10px;color:#1d3a64">· 금액 단위: 만원</b>
     <small>처음 숫자는 예시(서울 광진구 연립)입니다. 넣은 값은 이 기기에만 저장되니, 여러 건은 '이 물건 저장' 후 '엑셀로 내려받기'로 보관하세요.</small></div>
 
   <!-- 시트 1: 계산기 -->
@@ -98,7 +99,7 @@ td.v input.addr{text-align:left;font-size:13px}
   <!-- 시트 2: 입찰가별 비교 -->
   <section class="pane" id="p-cmp">
     <h1 style="font-size:18px">입찰가별 비교 — 얼마까지 써도 남을까</h1>
-    <div class="sub">'계산기'의 감정가·매도가·보유기간·대출 조건 그대로, 입찰가만 바꿔서 계산합니다.</div>
+    <div class="sub">'계산기'의 감정가·매도가·보유기간·대출 조건 그대로, 입찰가만 바꿔서 계산합니다. <b>금액 단위: 만원</b></div>
     <div class="wide"><table class="c" id="cmp"></table></div>
     <div class="sub" style="margin-top:8px">※ 세후 순수익이 빨간색(마이너스)이 되는 줄 바로 위가, 이 조건에서 써 볼 수 있는 상한입니다. 참고용 계산입니다.</div>
   </section>
@@ -106,7 +107,7 @@ td.v input.addr{text-align:left;font-size:13px}
   <!-- 시트 3: 세율표 -->
   <section class="pane" id="p-tax">
     <h1 style="font-size:18px">양도소득세 기본세율 (주택, 2년 이상 보유)</h1>
-    <div class="sub">출처: 소득세법 제104조·제55조 (2023년 1월 1일 이후 양도분). 1년 미만 70%, 2년 미만 60%(주택·입주권). 다주택 중과는 반영하지 않았습니다.</div>
+    <div class="sub">출처: 소득세법 제104조·제55조 (2023년 1월 1일 이후 양도분). 1년 미만 70%, 2년 미만 60%(주택·입주권). 다주택 중과는 반영하지 않았습니다. <b>금액 단위: 만원</b></div>
     <div class="wide"><table class="c" id="taxT" style="min-width:420px;max-width:600px"></table></div>
   </section>
 
@@ -145,7 +146,9 @@ const BR = [[0,14e6,.06,0],[14e6,50e6,.15,1.26e6],[50e6,88e6,.24,5.76e6],[88e6,1
 const KEY = "jasanrunner_villa_calc_v1";
 let S = Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || "{}"));
 
-const won = n => { n = Math.round(n) || 0; return n === 0 ? "-" : n.toLocaleString("ko-KR"); };
+// 10/07 대표님: 금액은 '만원' 단위로 보이고 입력한다(계산은 내부에서 원 단위 그대로)
+const m1 = n => { const v = (n || 0) / 1e4; return Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10; };
+const won = n => { const v = m1(n); return v === 0 ? "-" : v.toLocaleString("ko-KR", {maximumFractionDigits: 1}); };
 const eok = n => { n = Math.round(n); const s = n < 0 ? "-" : ""; n = Math.abs(n); const e = Math.floor(n / 1e8), m = Math.round((n % 1e8) / 1e4);
   return s + (e ? e + "억 " : "") + (m ? m.toLocaleString() + "만" : "") + (!e && !m ? "0" : "") + "원"; };
 const pct = x => (isFinite(x) ? (x * 100).toFixed(1) : "0.0") + "%";
@@ -174,18 +177,18 @@ function calc(bid) {
 
 // ── 칸 만들기 (엑셀 칸 배치: 항목 | 금액 | 설명) ─────────────────
 const H = (t, s) => `<tr><th colspan="3">${t}${s ? ` <small>${s}</small>` : ""}</th></tr>`;
-const IN = (k, label, note, isPct, cls) => `<tr class="${cls || ""}"><td class="k">${label}</td><td class="v ${cls === "as" ? "as" : "in"}"><input data-k="${k}" inputmode="decimal" value="${isPct ? S[k] + (k === "months" ? "" : "%") : won(S[k]).replace("-", "0")}"></td><td class="n">${note || ""}</td></tr>`;
+const IN = (k, label, note, isPct, cls) => `<tr class="${cls || ""}"><td class="k">${label}</td><td class="v ${cls === "as" ? "as" : "in"}"><input data-k="${k}" ${isPct ? "" : 'data-u="man"'} inputmode="decimal" value="${isPct ? S[k] + (k === "months" ? "" : "%") : won(S[k]).replace("-", "0")}"></td><td class="n">${note || ""}</td></tr>`;
 const SEL = (k, label, note, opts) => { const red = k === "exempt" && S[k] === "예";   // 10/06 대표님: 비과세 '예'는 빨간색
   return `<tr><td class="k ${red ? "neg" : ""}">${label}</td><td class="v in"><select data-k="${k}" class="${red ? "neg" : ""}">${opts.map(o => `<option ${S[k] === o ? "selected" : ""}>${o}</option>`).join("")}</select></td><td class="n ${red ? "neg" : ""}">${red ? "비과세 적용 중 — 양도세 0. 빨간 숫자가 바뀐 곳" : (note || "")}</td></tr>`; };
 const OUT = (label, val, note, cls, neg) => `<tr class="${cls || ""}"><td class="k">${label}</td><td class="v ${neg ? "neg" : ""}">${val}</td><td class="n">${note || ""}</td></tr>`;
-const AS = (k, label, isPct) => `<tr><td class="k">${label}</td><td class="v as"><input data-k="${k}" inputmode="decimal" value="${isPct ? S[k] + "%" : won(S[k])}"></td></tr>`;
+const AS = (k, label, isPct) => `<tr><td class="k">${label}</td><td class="v as"><input data-k="${k}" ${isPct ? "" : 'data-u="man"'} inputmode="decimal" value="${isPct ? S[k] + "%" : won(S[k]).replace("-", "0")}"></td></tr>`;
 
 function render() {
   const c = calc(S.bid), ex = S.exempt === "예";
   left.innerHTML = `<table class="t">` +
     `<tr class="b"><td class="k">사건번호</td><td class="v in"><input data-k="caseNo" data-t="text" value="${esc(S.caseNo)}" placeholder="2025타경00000"></td><td class="n">예) 서울동부 2025타경52303</td></tr>` +
     `<tr class="b"><td class="k">물건지 주소</td><td class="v in" colspan="2"><input class="addr" data-k="addr" data-t="text" value="${esc(S.addr)}" placeholder="도로명 또는 지번"></td></tr>` +
-    H("① 물건 정보", "(경매 사이트·감정평가서에서 옮겨 적기)") +
+    H("① 물건 정보", "(경매 사이트·감정평가서에서 옮겨 적기) · 금액 단위: 만원") +
     IN("appr", "감정가", "법원이 매긴 값") + IN("min", "현재 최저가", "이번 회차 시작 가격") +
     OUT("최저가율", pct(S.min / S.appr), "감정가 대비") +
     H("② 내 계획") +
@@ -219,7 +222,7 @@ function render() {
     `<table class="t"><tr><th colspan="2" style="background:#6b7686">기본값 (바꿔도 됨)</th></tr>` +
     AS("acqR", "취득세율", true) + AS("regR", "등기 비용 비율", true) + AS("legal", "법무비") + AS("feeR", "중개수수료율", true) +
     AS("preR", "중도상환수수료율", true) + AS("basic", "양도 기본공제") + AS("localR", "지방소득세율", true) + `</table>`;
-  sumBox.innerHTML = `<table class="t sum"><tr><th colspan="2">한눈에 보기${S.caseNo ? ` <small>· ${String(S.caseNo).replace(/</g, "&lt;")}</small>` : ""}</th></tr>` +
+  sumBox.innerHTML = `<table class="t sum"><tr><th colspan="2">한눈에 보기 <small>(만원)</small>${S.caseNo ? ` <small>· ${String(S.caseNo).replace(/</g, "&lt;")}</small>` : ""}</th></tr>` +
     [["필요 현금 (투자금)", c.cash], ["실투자금 (이자 포함)", c.invest], ["세후 순수익", c.net]]
       .map(([k, v], i) => `<tr><td class="k"><b>${k}</b></td><td class="v ${v < 0 || (ex && i === 2) ? "neg" : ""}">${won(v)}<small>${eok(v)}</small></td></tr>`).join("") +
     `<tr><td class="k"><b>수익률</b></td><td class="v ${c.roi < 0 || ex ? "neg" : ""}">${pct(c.roi)}</td></tr><tr><td class="k"><b>연 환산</b></td><td class="v ${ex ? "neg" : ""}">${pct(c.yr)}</td></tr></table>` +
@@ -230,7 +233,7 @@ function render() {
     rows.map(([l, b, cl]) => { const x = calc(b);
       return `<tr class="${cl}"><td>${l}</td><td>${won(b)}</td><td>${won(x.loan)}</td><td>${won(x.totalBuy - b)}</td><td>${won(x.cash)}</td><td>${won(x.int)}</td><td>${won(x.invest)}</td><td>${won(x.fee + x.pre)}</td><td class="${ex ? "neg" : ""}">${won(x.taxAll)}</td><td class="${x.net < 0 || ex ? "neg" : ""}">${won(x.net)}</td><td class="${x.roi < 0 || ex ? "neg" : ""}">${pct(x.roi)}</td></tr>`; }).join("");
   document.querySelectorAll("[data-k]").forEach(el => el.addEventListener("change", () => {
-    S[el.dataset.k] = (el.tagName === "SELECT" || el.dataset.t === "text") ? el.value.trim() : num(el.value);
+    S[el.dataset.k] = (el.tagName === "SELECT" || el.dataset.t === "text") ? el.value.trim() : num(el.value) * (el.dataset.u === "man" ? 1e4 : 1);
     localStorage.setItem(KEY, JSON.stringify(S)); setTimeout(render, 0);
   }));
 }
@@ -275,32 +278,33 @@ function detailRows(st) {
     ["⑤ 팔 때 드는 돈 · 양도세"], ["중개수수료", c.fee], ["중도상환수수료", c.pre], ["양도차익", c.gain], ["필요경비", c.exp], ["기본공제", S.basic], ["과세표준", c.base],
     ["적용 세율", c.rate], ["누진공제", c.ded], ["양도소득세", c.tax], ["지방소득세", c.local], ["세금 합계", c.taxAll],
     ["⑥ 결과"], ["세후 순수익", c.net], ["수익률 (실투자금 대비)", c.roi], ["연 환산 수익률", c.yr], [],
-    ["※ 참고용 계산입니다. 대출·세금은 은행·세무사 확인이 필요합니다. — 자산러너 | 다가구의 모든 것"]]; });
+    ["※ 금액 단위: 만원 · 참고용 계산입니다. 대출·세금은 은행·세무사 확인이 필요합니다. — 자산러너 | 다가구의 모든 것"]]
+    .map(r => (r.length === 2 && typeof r[1] === "number" && !/율|대비|개월/.test(r[0])) ? [r[0], m1(r[1])] : r); });
 }
 const SUMH = ["사건번호", "물건지 주소", "감정가", "현재 최저가", "내 입찰가", "감정가 대비", "예상 매도가", "보유기간(개월)", "대출 기준", "대출 비율", "금리",
   "대출금", "필요 현금(투자금)", "실투자금(이자 포함)", "세금 합계", "세후 순수익", "수익률", "연 환산", "저장 시각"];
-function sumRow(st) { return withS(st, () => { const c = calc(S.bid); return [S.caseNo, S.addr, S.appr, S.min, S.bid, S.bid / S.appr, S.sell, S.months, S.basis,
-  S.ltv / 100, S.rate / 100, c.loan, c.cash, c.invest, c.taxAll, c.net, c.roi, c.yr, st.savedAt || ""]; }); }
+function sumRow(st) { return withS(st, () => { const c = calc(S.bid); return [S.caseNo, S.addr, m1(S.appr), m1(S.min), m1(S.bid), S.bid / S.appr, m1(S.sell), S.months, S.basis,
+  S.ltv / 100, S.rate / 100, m1(c.loan), m1(c.cash), m1(c.invest), m1(c.taxAll), m1(c.net), c.roi, c.yr, st.savedAt || ""]; }); }
 function loadXLSX() { return new Promise((ok, no) => { if (window.XLSX) return ok();
   const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload = ok; s.onerror = no; document.head.appendChild(s); }); }
 bXl.onclick = async () => {
   const L = getList(); let items = Object.values(L);
   if (!items.length) items = [Object.assign({}, S)];            // 저장한 게 없으면 지금 화면 한 건
-  const day = new Date().toISOString().slice(0, 10);
+  const day = new Date().toLocaleDateString("sv-SE");   // 한국 날짜 그대로(YYYY-MM-DD)
   try {
     await loadXLSX();
     const wb = XLSX.utils.book_new();
-    const sum = XLSX.utils.aoa_to_sheet([["서울 빌라 경매 낙찰가 계산 — 물건 목록 (" + day + ")"], [], SUMH].concat(items.map(sumRow)));
+    const sum = XLSX.utils.aoa_to_sheet([["서울 빌라 경매 낙찰가 계산 — 물건 목록 (" + day + ") · 금액 단위: 만원"], [], SUMH].concat(items.map(sumRow)));
     sum["!cols"] = SUMH.map((h, i) => ({wch: i === 1 ? 34 : i === 0 ? 18 : 14}));
     const pctCols = [5, 9, 10, 16, 17];
-    for (let r = 3; r < 3 + items.length; r++) for (let cI = 2; cI < 18; cI++) { const a = XLSX.utils.encode_cell({r, c: cI}); if (sum[a] && typeof sum[a].v === "number") sum[a].z = pctCols.includes(cI) ? "0.0%" : (cI === 7 ? "0" : "#,##0"); }
+    for (let r = 3; r < 3 + items.length; r++) for (let cI = 2; cI < 18; cI++) { const a = XLSX.utils.encode_cell({r, c: cI}); if (sum[a] && typeof sum[a].v === "number") sum[a].z = pctCols.includes(cI) ? "0.0%" : (cI === 7 ? "0" : (Math.abs(sum[a].v) < 100 && sum[a].v % 1 ? "0.0" : "#,##0")); }
     XLSX.utils.book_append_sheet(wb, sum, "물건 목록");
     const used = {};
     items.forEach(st => {
       const rows = detailRows(st), ws = XLSX.utils.aoa_to_sheet(rows);
       ws["!cols"] = [{wch: 24}, {wch: 20}];
       rows.forEach((r, i) => { const a = "B" + (i + 1); if (ws[a] && typeof ws[a].v === "number")
-        ws[a].z = /율|대비|세율/.test(r[0]) ? "0.0%" : (r[0] === "보유기간 (개월)" ? "0" : "#,##0"); });
+        ws[a].z = /율|대비|세율/.test(r[0]) ? "0.0%" : (r[0] === "보유기간 (개월)" ? "0" : (Math.abs(ws[a].v) < 100 && ws[a].v % 1 ? "0.0" : "#,##0")); });
       let nm = String(st.caseNo || "물건").replace(/[\\\/\?\*\[\]:]/g, " ").slice(0, 28) || "물건";
       while (used[nm]) nm = nm.slice(0, 26) + "_" + (used[nm]++); used[nm] = 1;
       XLSX.utils.book_append_sheet(wb, ws, nm);
