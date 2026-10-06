@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>서울 빌라 경매 낙찰가 계산 시트 · 자산러너</title>
+<meta name="description" content="감정가·입찰가·매도가만 넣으면 투자금과 세후 수익이 바로 계산됩니다. 자산러너 | 다가구의 모든 것">
+<!-- 서울 빌라 경매 낙찰가 계산 시트 (2026-10-06 대표님 지시) — 엑셀 「서울빌라_경매_낙찰가_계산시트_자산러너.xlsx」와
+     같은 구조(시트 4개 = 탭 4개, 칸 배치·색 동일)·같은 계산. 엑셀을 고치면 이 파일의 calc() 도 같이 고친다.
+     파일 하나로 어디에 올려도 동작(외부 데이터 없음, 글꼴만 CDN). -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#1d3a64;--yel:#fff2b3;--gray:#f2f4f7;--grn:#e2f0d9;--pink:#fce4d6;--line:#d0d7e2;--sub:#6b7686;--red:#c0392b;--blue:#0000ff}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:#e9edf2;color:#000;font-family:"맑은 고딕","Malgun Gothic",Pretendard,-apple-system,sans-serif;font-size:13px}
+.sheet{max-width:1000px;margin:0 auto;background:#fff;min-height:100vh;padding:18px 18px 70px}
+h1{font-size:22px;color:var(--navy);margin:0 0 4px}
+.sub{color:var(--sub);font-size:12px;margin-bottom:4px}
+.legend{background:#fff4e5;border:2px solid #f0a040;border-left:6px solid #e67e22;border-radius:8px;padding:9px 12px;margin:8px 0 14px;font-size:13px;color:#1b2433;line-height:1.7}
+.legend b.t{color:#c0392b;margin-right:6px}
+.legend .sw{display:inline-block;width:14px;height:14px;border:1px solid #b9c3d0;border-radius:3px;vertical-align:-2px;margin:0 4px 0 8px}
+.legend small{display:block;color:#6b7686;font-size:11.5px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+.cols>*{min-width:0}
+@media(max-width:780px){.cols{display:flex;flex-direction:column;gap:0}.right{display:contents}#sumBox{order:-1}#defBox{order:2}}
+table.t{width:100%;border-collapse:collapse;margin-bottom:14px;table-layout:fixed}
+table.t th{background:var(--navy);color:#fff;text-align:left;font-size:13px;padding:6px 8px;font-weight:700}
+table.t th small{font-weight:400;opacity:.85}
+table.t td{border:1px solid var(--line);padding:4px 7px;height:30px;vertical-align:middle}
+table.t td.k{width:38%}
+table.t td.v{width:30%;text-align:right;font-variant-numeric:tabular-nums}
+table.t td.n{color:var(--sub);font-size:11px;line-height:1.35}
+table.t td.v.in{background:var(--yel);padding:0}
+table.t td.v.as{background:var(--gray);padding:0}
+td.v input,td.v select{width:100%;height:30px;border:0;background:transparent;text-align:right;font-family:inherit;font-size:14px;color:var(--blue);padding:0 7px;outline:none}
+td.v select{text-align-last:right;cursor:pointer}
+td.v input:focus,td.v select:focus{background:#fff;box-shadow:inset 0 0 0 2px #2f6fd0}
+tr.b td{font-weight:800}
+tr.g td{background:var(--grn)} tr.p td{background:var(--pink)}
+.neg{color:var(--red)!important;font-weight:800}
+.right table.t td.k{width:58%}
+.right table.t td.v{width:42%}
+.sum td.v{font-size:15px;font-weight:800;color:var(--navy)}
+.sum td.v small{display:block;font-size:10px;font-weight:400;color:var(--sub)}
+.fine{color:var(--sub);font-size:10px;margin-top:-6px}
+.foot{color:var(--sub);font-size:11px;margin-top:6px}
+/* 시트 탭 (엑셀 아래 탭처럼) */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:#f3f3f3;border-top:1px solid #c8c8c8;display:flex;justify-content:center;gap:2px;padding:0 6px;z-index:5}
+.tabs button{border:1px solid #c8c8c8;border-top:0;background:#e6e6e6;padding:9px 14px;font-family:inherit;font-size:13px;cursor:pointer;border-radius:0 0 6px 6px}
+.tabs button.on{background:#fff;color:#217346;font-weight:800;border-bottom:3px solid #217346}
+.pane{display:none}.pane.on{display:block}
+.wide{overflow-x:auto}
+table.c{border-collapse:collapse;min-width:820px;width:100%}
+table.c th{background:var(--navy);color:#fff;padding:6px;font-size:12px;text-align:center;border:1px solid var(--line)}
+table.c td{border:1px solid var(--line);padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.c td:first-child{text-align:left}
+table.c tr.gr td{background:var(--gray);font-weight:800} table.c tr.me td{background:var(--yel);font-weight:800}
+.use p{margin:0 0 4px;line-height:1.65;font-size:13px}.use p.h{font-weight:800;color:var(--navy);margin-top:10px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:7px 12px;font-family:inherit;font-size:12px;cursor:pointer;margin-top:10px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px;padding:8px;background:#f3f6fa;border:1px solid var(--line);border-radius:8px}
+.bar .btn{margin:0;height:34px}
+.bar select{height:34px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:13px;padding:0 8px;min-width:200px;max-width:100%;background:#fff}
+.btn.pri{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+.btn.xl{background:#217346;color:#fff;border-color:#217346;font-weight:700}
+.msg{font-size:12px;color:#217346;font-weight:700}
+td.v input.addr{text-align:left;font-size:13px}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>서울 빌라 경매 낙찰가 계산 시트</h1>
+  <div class="sub">자산러너 | 다가구의 모든 것 · 노란 칸만 바꾸시면 투자금과 세후 수익이 바로 계산됩니다</div>
+  <div class="legend"><b class="t">사용법</b>
+    <span class="sw" style="background:#fff2b3"></span><b>노란 칸</b> = 입력
+    <span class="sw" style="background:#f2f4f7"></span><b>회색 칸</b> = 기본값(바꿔도 됨)
+    <span class="sw" style="background:#fff"></span><b>흰 칸</b> = 자동 계산
+    <small>처음 숫자는 예시(서울 광진구 연립)입니다. 넣은 값은 이 기기에만 저장되니, 여러 건은 '이 물건 저장' 후 '엑셀로 내려받기'로 보관하세요.</small></div>
+
+  <!-- 시트 1: 계산기 -->
+  <section class="pane on" id="p-calc">
+    <div class="bar">
+      <select id="saved"><option value="">저장한 물건 (0건)</option></select>
+      <button class="btn pri" id="bSave">이 물건 저장</button>
+      <button class="btn" id="bNew">새 물건</button>
+      <button class="btn" id="reset">예시 보기</button>
+      <button class="btn" id="bDel">삭제</button>
+      <button class="btn xl" id="bXl">엑셀로 내려받기</button>
+      <span class="msg" id="msg"></span>
+    </div>
+    <div class="cols">
+      <div id="left"></div>
+      <div class="right"><div id="defBox"></div><div id="sumBox"></div></div>
+    </div>
+    <div class="foot">자산러너 | 다가구의 모든 것 · 유튜브 @자산러너다가구투자 · 아는 것이 노후를 지킵니다</div>
+  </section>
+
+  <!-- 시트 2: 입찰가별 비교 -->
+  <section class="pane" id="p-cmp">
+    <h1 style="font-size:18px">입찰가별 비교 — 얼마까지 써도 남을까</h1>
+    <div class="sub">'계산기'의 감정가·매도가·보유기간·대출 조건 그대로, 입찰가만 바꿔서 계산합니다.</div>
+    <div class="wide"><table class="c" id="cmp"></table></div>
+    <div class="sub" style="margin-top:8px">※ 세후 순수익이 빨간색(마이너스)이 되는 줄 바로 위가, 이 조건에서 써 볼 수 있는 상한입니다. 참고용 계산입니다.</div>
+  </section>
+
+  <!-- 시트 3: 세율표 -->
+  <section class="pane" id="p-tax">
+    <h1 style="font-size:18px">양도소득세 기본세율 (주택, 2년 이상 보유)</h1>
+    <div class="sub">출처: 소득세법 제104조·제55조 (2023년 1월 1일 이후 양도분). 1년 미만 70%, 2년 미만 60%(주택·입주권). 다주택 중과는 반영하지 않았습니다.</div>
+    <div class="wide"><table class="c" id="taxT" style="min-width:420px;max-width:600px"></table></div>
+  </section>
+
+  <!-- 시트 4: 사용법 -->
+  <section class="pane use" id="p-use">
+    <h1 style="font-size:18px">서울 빌라 경매 낙찰가 계산 시트 — 사용법</h1>
+    <p class="h">1. '계산기'의 노란 칸만 바꾸세요.</p>
+    <p>· 감정가·최저가: 경매 사이트 또는 법원경매정보(courtauction.go.kr) 물건 화면</p>
+    <p>· 내 입찰가: 써 낼 금액. 예상 매도가: 같은 단지·같은 동네 연립의 최근 실거래가(국토부 실거래가 공개시스템)로 근거를 잡으세요</p>
+    <p>· 보유기간: 개월 수. 대출: 은행에 '경락잔금대출'로 문의 — 기준(감정가/낙찰가)과 비율이 은행마다 다릅니다</p>
+    <p>· 명도비·수리비·미납관리비: 현장·관리사무소 확인 후 넉넉하게</p>
+    <p class="h">2. 결과는 '한눈에 보기'와 ⑥ 결과에 나옵니다.</p>
+    <p>· 필요 현금(투자금) = 입찰가 + 취득세·등기·법무·명도·수리·미납관리비 − 대출금</p>
+    <p>· 세후 순수익 = 매도가 − 매입비용 − 보유기간 이자 − 중개·중도상환수수료 − 양도세(지방소득세 포함)</p>
+    <p class="h">3. '입찰가별 비교'에서 감정가의 60~100%로 썼을 때를 한 번에 봅니다. 순수익이 빨간색이 되기 직전이 상한입니다.</p>
+    <p class="h">4. 1세대 1주택 비과세를 '예'로 하면 양도세가 0으로 계산됩니다. 조건(요약):</p>
+    <p>· 1세대가 국내에 주택 1채 · 2년 이상 보유 · 취득 당시 조정대상지역이면 2년 이상 거주 · 양도가액 12억 원 이하</p>
+    <p>· 조건이 하나라도 다르면 '아니오'로 두세요. 반드시 세무사와 확인하세요.</p>
+    <p class="h">5. 기본값(회색 칸)은 바꿔도 됩니다.</p>
+    <p>· 필요경비에서 수리비는 빠집니다. 샷시·확장처럼 집의 가치를 올린 공사(자본적 지출)만 증빙이 있으면 인정됩니다.</p>
+    <p>· 개인이 산 집의 대출 이자는 양도세 필요경비로 인정되지 않습니다(순수익에서만 뺍니다).</p>
+    <p class="h">※ 이 시트는 판단을 돕는 참고용 계산입니다. 투자 권유가 아니며, 대출·세금은 은행·세무사 확인이 필요합니다.</p>
+  </section>
+</div>
+
+<nav class="tabs">
+  <button class="on" data-p="p-calc">계산기</button><button data-p="p-cmp">입찰가별 비교</button><button data-p="p-tax">세율표</button><button data-p="p-use">사용법</button>
+</nav>
+
+<script>
+// ── 예시 값(엑셀과 같음) ───────────────────────────────────────
+const DEF = {caseNo:"2025타경52303", addr:"서울 광진구 군자동 280 다성파크빌 4층 403호", appr:359000000, min:287200000, bid:290000000, sell:450000000, months:24, exempt:"아니오",
+  basis:"감정가", ltv:40, rate:4.7, evict:2500000, repair:5000000, dues:0,
+  acqR:1.1, regR:0.2, legal:800000, feeR:0.5, preR:3, basic:2500000, localR:10};
+const BR = [[0,14e6,.06,0],[14e6,50e6,.15,1.26e6],[50e6,88e6,.24,5.76e6],[88e6,150e6,.35,15.44e6],[150e6,300e6,.38,19.94e6],[300e6,500e6,.40,25.94e6],[500e6,1e9,.42,35.94e6],[1e9,null,.45,65.94e6]];
+const KEY = "jasanrunner_villa_calc_v1";
+let S = Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || "{}"));
+
+const won = n => { n = Math.round(n) || 0; return n === 0 ? "-" : n.toLocaleString("ko-KR"); };
+const eok = n => { n = Math.round(n); const s = n < 0 ? "-" : ""; n = Math.abs(n); const e = Math.floor(n / 1e8), m = Math.round((n % 1e8) / 1e4);
+  return s + (e ? e + "억 " : "") + (m ? m.toLocaleString() + "만" : "") + (!e && !m ? "0" : "") + "원"; };
+const pct = x => (isFinite(x) ? (x * 100).toFixed(1) : "0.0") + "%";
+const num = s => Number(String(s).replace(/[^0-9.\-]/g, "")) || 0;
+const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+const look = b => { let r = BR[0]; for (const x of BR) if (b >= x[0]) r = x; return r; };   // 엑셀 LOOKUP 과 같음
+
+// 엑셀 '계산기' 시트와 같은 식 (bid 만 바꿔 '입찰가별 비교'에도 씀)
+function calc(bid) {
+  const loan = (S.basis === "낙찰가" ? bid : S.appr) * S.ltv / 100;
+  const mInt = loan * S.rate / 100 / 12, int = mInt * S.months;
+  const acq = bid * S.acqR / 100, reg = bid * S.regR / 100;
+  const totalBuy = bid + acq + reg + S.legal + S.evict + S.repair + S.dues;
+  const cash = totalBuy - loan, invest = cash + int;
+  const fee = S.sell * S.feeR / 100, pre = loan * S.preR / 100;
+  const gain = S.sell - bid, exp = acq + reg + S.legal + fee;
+  const base = Math.max(0, gain - exp - S.basic);
+  const rate = S.months < 12 ? .7 : S.months < 24 ? .6 : look(base)[2];
+  const ded = S.months < 24 ? 0 : look(base)[3];
+  const tax = (S.exempt === "예" && S.sell <= 1.2e9 && S.months >= 24) ? 0 : Math.max(0, base * rate - ded);
+  const local = tax * S.localR / 100, taxAll = tax + local;
+  const net = S.sell - totalBuy - int - fee - pre - taxAll;
+  const roi = invest ? net / invest : 0, yr = S.months ? roi / (S.months / 12) : 0;
+  return {bid, loan, mInt, int, acq, reg, totalBuy, cash, invest, fee, pre, gain, exp, base, rate, ded, tax, local, taxAll, net, roi, yr};
+}
+
+// ── 칸 만들기 (엑셀 칸 배치: 항목 | 금액 | 설명) ─────────────────
+const H = (t, s) => `<tr><th colspan="3">${t}${s ? ` <small>${s}</small>` : ""}</th></tr>`;
+const IN = (k, label, note, isPct, cls) => `<tr class="${cls || ""}"><td class="k">${label}</td><td class="v ${cls === "as" ? "as" : "in"}"><input data-k="${k}" inputmode="decimal" value="${isPct ? S[k] + (k === "months" ? "" : "%") : won(S[k]).replace("-", "0")}"></td><td class="n">${note || ""}</td></tr>`;
+const SEL = (k, label, note, opts) => { const red = k === "exempt" && S[k] === "예";   // 10/06 대표님: 비과세 '예'는 빨간색
+  return `<tr><td class="k ${red ? "neg" : ""}">${label}</td><td class="v in"><select data-k="${k}" class="${red ? "neg" : ""}">${opts.map(o => `<option ${S[k] === o ? "selected" : ""}>${o}</option>`).join("")}</select></td><td class="n ${red ? "neg" : ""}">${red ? "비과세 적용 중 — 양도세 0. 빨간 숫자가 바뀐 곳" : (note || "")}</td></tr>`; };
+const OUT = (label, val, note, cls, neg) => `<tr class="${cls || ""}"><td class="k">${label}</td><td class="v ${neg ? "neg" : ""}">${val}</td><td class="n">${note || ""}</td></tr>`;
+const AS = (k, label, isPct) => `<tr><td class="k">${label}</td><td class="v as"><input data-k="${k}" inputmode="decimal" value="${isPct ? S[k] + "%" : won(S[k])}"></td></tr>`;
+
+function render() {
+  const c = calc(S.bid), ex = S.exempt === "예";
+  left.innerHTML = `<table class="t">` +
+    `<tr class="b"><td class="k">사건번호</td><td class="v in"><input data-k="caseNo" data-t="text" value="${esc(S.caseNo)}" placeholder="2025타경00000"></td><td class="n">예) 서울동부 2025타경52303</td></tr>` +
+    `<tr class="b"><td class="k">물건지 주소</td><td class="v in" colspan="2"><input class="addr" data-k="addr" data-t="text" value="${esc(S.addr)}" placeholder="도로명 또는 지번"></td></tr>` +
+    H("① 물건 정보", "(경매 사이트·감정평가서에서 옮겨 적기)") +
+    IN("appr", "감정가", "법원이 매긴 값") + IN("min", "현재 최저가", "이번 회차 시작 가격") +
+    OUT("최저가율", pct(S.min / S.appr), "감정가 대비") +
+    H("② 내 계획") +
+    IN("bid", "<b>내 입찰가 (낙찰가)</b>", "써 낼 금액 · " + eok(S.bid)) + OUT("감정가 대비", pct(S.bid / S.appr)) +
+    IN("sell", "<b>예상 매도가</b>", "팔 때 받을 값 — 근거(실거래·호가)를 꼭 확인") +
+    IN("months", "보유기간 (개월)", "12개월 미만 세율 70% · 24개월 미만 60%", true) +
+    SEL("exempt", "1세대 1주택 비과세", "예 = 양도세 0 (조건은 '사용법')", ["아니오", "예"]) +
+    H("③ 대출") +
+    SEL("basis", "대출 기준", "은행마다 다름 — 감정가 또는 낙찰가", ["감정가", "낙찰가"]) +
+    IN("ltv", "대출 비율", "예) 무주택 40% · 생애최초 70%", true) + IN("rate", "금리 (연)", "", true) +
+    OUT("대출금", won(c.loan)) + OUT("월 이자", won(c.mInt)) + OUT("보유기간 총이자", won(c.int)) +
+    H("④ 살 때 드는 돈") +
+    OUT("취득세 (지방세 포함)", won(c.acq), "입찰가 × 취득세율") + OUT("기타 등기 비용", won(c.reg), "입찰가 × 등기비율") +
+    OUT("법무비", won(S.legal)) + IN("evict", "명도비", "평당 10만 원 정도") + IN("repair", "수리비") +
+    IN("dues", "미납관리비", "매각물건명세서·관리사무소 확인") +
+    OUT("총 매입비용", won(c.totalBuy), "입찰가 + ④", "b") +
+    OUT("필요 현금 (투자금)", won(c.cash), "총 매입비용 − 대출금", "b g") +
+    OUT("실투자금 (이자 포함)", won(c.invest), "필요 현금 + 보유기간 이자", "b g") +
+    H("⑤ 팔 때 드는 돈 · 양도세") +
+    OUT("중개수수료", won(c.fee), "매도가 × 중개수수료율") + OUT("중도상환수수료", won(c.pre), "대출금 × 수수료율 (은행 확인)") +
+    OUT("양도차익", won(c.gain), "매도가 − 입찰가") + OUT("필요경비", won(c.exp), "취득세·등기·법무비·중개수수료 (수리비는 빠짐)") +
+    OUT("기본공제", won(S.basic), "1년에 1번 250만 원") + OUT("과세표준", won(c.base)) +
+    OUT("적용 세율", pct(c.rate), "보유기간·과세표준에 맞춰 자동") + OUT("누진공제", won(c.ded)) +
+    OUT("양도소득세", ex ? "0 (비과세)" : won(c.tax), "", "", ex) + OUT("지방소득세", ex ? "0 (비과세)" : won(c.local), "양도소득세 × 10%", "", ex) +
+    OUT("세금 합계", ex ? "0 (비과세)" : won(c.taxAll), "", "b", ex) +
+    H("⑥ 결과") +
+    OUT("세후 순수익", won(c.net), "매도가 − 매입비용 − 이자 − 팔 때 비용 − 세금", "b p", c.net < 0 || ex) +
+    OUT("수익률 (실투자금 대비)", pct(c.roi), "", "b p", c.roi < 0 || ex) + OUT("연 환산 수익률", pct(c.yr), "", "", ex) +
+    `</table>`;
+  defBox.innerHTML =
+    `<table class="t"><tr><th colspan="2" style="background:#6b7686">기본값 (바꿔도 됨)</th></tr>` +
+    AS("acqR", "취득세율", true) + AS("regR", "등기 비용 비율", true) + AS("legal", "법무비") + AS("feeR", "중개수수료율", true) +
+    AS("preR", "중도상환수수료율", true) + AS("basic", "양도 기본공제") + AS("localR", "지방소득세율", true) + `</table>`;
+  sumBox.innerHTML = `<table class="t sum"><tr><th colspan="2">한눈에 보기${S.caseNo ? ` <small>· ${String(S.caseNo).replace(/</g, "&lt;")}</small>` : ""}</th></tr>` +
+    [["필요 현금 (투자금)", c.cash], ["실투자금 (이자 포함)", c.invest], ["세후 순수익", c.net]]
+      .map(([k, v], i) => `<tr><td class="k"><b>${k}</b></td><td class="v ${v < 0 || (ex && i === 2) ? "neg" : ""}">${won(v)}<small>${eok(v)}</small></td></tr>`).join("") +
+    `<tr><td class="k"><b>수익률</b></td><td class="v ${c.roi < 0 || ex ? "neg" : ""}">${pct(c.roi)}</td></tr><tr><td class="k"><b>연 환산</b></td><td class="v ${ex ? "neg" : ""}">${pct(c.yr)}</td></tr></table>` +
+    (ex ? `<div class="fine neg" style="font-weight:700;margin:0 0 10px">※ 1세대 1주택 비과세 적용 중 (양도세 0)</div>` : "") +
+    `<div class="fine">※ 참고용 계산입니다. 대출·세금은 은행·세무사 확인이 필요합니다.</div>`;
+  const rows = [["최저가", S.min, "gr"]].concat([60, 65, 70, 75, 80, 85, 90, 95, 100].map(p => [p + "%", S.appr * p / 100, ""])).concat([["내 입찰가", S.bid, "me"]]);
+  cmp.innerHTML = "<tr><th>감정가 대비</th><th>입찰가</th><th>대출금</th><th>매입 부대비용</th><th>필요 현금</th><th>보유 이자</th><th>실투자금</th><th>팔 때 비용</th><th>세금 합계</th><th>세후 순수익</th><th>수익률</th></tr>" +
+    rows.map(([l, b, cl]) => { const x = calc(b);
+      return `<tr class="${cl}"><td>${l}</td><td>${won(b)}</td><td>${won(x.loan)}</td><td>${won(x.totalBuy - b)}</td><td>${won(x.cash)}</td><td>${won(x.int)}</td><td>${won(x.invest)}</td><td>${won(x.fee + x.pre)}</td><td class="${ex ? "neg" : ""}">${won(x.taxAll)}</td><td class="${x.net < 0 || ex ? "neg" : ""}">${won(x.net)}</td><td class="${x.roi < 0 || ex ? "neg" : ""}">${pct(x.roi)}</td></tr>`; }).join("");
+  document.querySelectorAll("[data-k]").forEach(el => el.addEventListener("change", () => {
+    S[el.dataset.k] = (el.tagName === "SELECT" || el.dataset.t === "text") ? el.value.trim() : num(el.value);
+    localStorage.setItem(KEY, JSON.stringify(S)); setTimeout(render, 0);
+  }));
+}
+taxT.innerHTML = "<tr><th>과세표준 이상</th><th>미만</th><th>세율</th><th>누진공제</th></tr>" +
+  BR.map(([lo, hi, r, d]) => `<tr><td>${won(lo).replace("-", "0")}</td><td>${hi ? won(hi) : "이상"}</td><td>${Math.round(r * 100)}%</td><td>${won(d).replace("-", "0")}</td></tr>`).join("");
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button,.pane").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); document.getElementById(b.dataset.p).classList.add("on"); window.scrollTo(0, 0);
+});
+document.getElementById("reset").onclick = () => { S = Object.assign({}, DEF); localStorage.setItem(KEY, JSON.stringify(S)); saved.value = ""; render(); say("예시(서울 광진구 연립)를 띄웠습니다"); };
+
+// ── 여러 건 저장 · 불러오기 · 엑셀로 내려받기 (10/06 대표님: "여러 건 할 때 기존 내용이 사라져서") ──
+const LKEY = "jasanrunner_villa_list_v1";
+const getList = () => JSON.parse(localStorage.getItem(LKEY) || "{}");
+const putList = L => localStorage.setItem(LKEY, JSON.stringify(L));
+const say = t => { msg.textContent = t; clearTimeout(say.t); say.t = setTimeout(() => msg.textContent = "", 3000); };
+function fillSaved(sel) {
+  const L = getList(), ks = Object.keys(L);
+  saved.innerHTML = `<option value="">저장한 물건 (${ks.length}건)</option>` +
+    ks.map(k => `<option value="${esc(k)}" ${k === sel ? "selected" : ""}>${esc(k)}${L[k].addr ? " · " + esc(L[k].addr).slice(0, 24) : ""}</option>`).join("");
+}
+saved.onchange = () => { const L = getList(); if (!saved.value) return;
+  S = Object.assign({}, DEF, L[saved.value]); localStorage.setItem(KEY, JSON.stringify(S)); render(); say("불러왔습니다"); };
+bSave.onclick = () => { const k = String(S.caseNo || "").trim(); if (!k) { alert("사건번호를 먼저 넣어 주세요."); return; }
+  const L = getList(), had = !!L[k]; L[k] = Object.assign({}, S, {savedAt: new Date().toLocaleString("ko-KR")}); putList(L); fillSaved(k);
+  say(had ? "덮어써서 저장했습니다" : "저장했습니다"); };
+bNew.onclick = () => { S = Object.assign({}, DEF, {caseNo: "", addr: ""}); localStorage.setItem(KEY, JSON.stringify(S)); saved.value = ""; render();
+  say("새 물건 — 사건번호부터 넣어 주세요"); };
+bDel.onclick = () => { const k = saved.value; if (!k) { alert("위 목록에서 지울 물건을 먼저 고르세요."); return; }
+  if (!confirm(k + " 를 저장 목록에서 지울까요?")) return; const L = getList(); delete L[k]; putList(L); fillSaved(""); say("지웠습니다"); };
+
+// 한 건의 숫자 (S 를 잠깐 바꿔 같은 calc 를 쓴다)
+function withS(st, fn) { const keep = S; S = Object.assign({}, DEF, st); try { return fn(); } finally { S = keep; } }
+function detailRows(st) {
+  return withS(st, () => { const c = calc(S.bid); return [
+    ["사건번호", S.caseNo], ["물건지 주소", S.addr], [],
+    ["① 물건 정보"], ["감정가", S.appr], ["현재 최저가", S.min], ["최저가율", S.min / S.appr],
+    ["② 내 계획"], ["내 입찰가 (낙찰가)", S.bid], ["감정가 대비", S.bid / S.appr], ["예상 매도가", S.sell], ["보유기간 (개월)", S.months], ["1세대 1주택 비과세", S.exempt],
+    ["③ 대출"], ["대출 기준", S.basis], ["대출 비율", S.ltv / 100], ["금리 (연)", S.rate / 100], ["대출금", c.loan], ["월 이자", c.mInt], ["보유기간 총이자", c.int],
+    ["④ 살 때 드는 돈"], ["취득세 (지방세 포함)", c.acq], ["기타 등기 비용", c.reg], ["법무비", S.legal], ["명도비", S.evict], ["수리비", S.repair], ["미납관리비", S.dues],
+    ["총 매입비용", c.totalBuy], ["필요 현금 (투자금)", c.cash], ["실투자금 (이자 포함)", c.invest],
+    ["⑤ 팔 때 드는 돈 · 양도세"], ["중개수수료", c.fee], ["중도상환수수료", c.pre], ["양도차익", c.gain], ["필요경비", c.exp], ["기본공제", S.basic], ["과세표준", c.base],
+    ["적용 세율", c.rate], ["누진공제", c.ded], ["양도소득세", c.tax], ["지방소득세", c.local], ["세금 합계", c.taxAll],
+    ["⑥ 결과"], ["세후 순수익", c.net], ["수익률 (실투자금 대비)", c.roi], ["연 환산 수익률", c.yr], [],
+    ["※ 참고용 계산입니다. 대출·세금은 은행·세무사 확인이 필요합니다. — 자산러너 | 다가구의 모든 것"]]; });
+}
+const SUMH = ["사건번호", "물건지 주소", "감정가", "현재 최저가", "내 입찰가", "감정가 대비", "예상 매도가", "보유기간(개월)", "대출 기준", "대출 비율", "금리",
+  "대출금", "필요 현금(투자금)", "실투자금(이자 포함)", "세금 합계", "세후 순수익", "수익률", "연 환산", "저장 시각"];
+function sumRow(st) { return withS(st, () => { const c = calc(S.bid); return [S.caseNo, S.addr, S.appr, S.min, S.bid, S.bid / S.appr, S.sell, S.months, S.basis,
+  S.ltv / 100, S.rate / 100, c.loan, c.cash, c.invest, c.taxAll, c.net, c.roi, c.yr, st.savedAt || ""]; }); }
+function loadXLSX() { return new Promise((ok, no) => { if (window.XLSX) return ok();
+  const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload = ok; s.onerror = no; document.head.appendChild(s); }); }
+bXl.onclick = async () => {
+  const L = getList(); let items = Object.values(L);
+  if (!items.length) items = [Object.assign({}, S)];            // 저장한 게 없으면 지금 화면 한 건
+  const day = new Date().toISOString().slice(0, 10);
+  try {
+    await loadXLSX();
+    const wb = XLSX.utils.book_new();
+    const sum = XLSX.utils.aoa_to_sheet([["서울 빌라 경매 낙찰가 계산 — 물건 목록 (" + day + ")"], [], SUMH].concat(items.map(sumRow)));
+    sum["!cols"] = SUMH.map((h, i) => ({wch: i === 1 ? 34 : i === 0 ? 18 : 14}));
+    const pctCols = [5, 9, 10, 16, 17];
+    for (let r = 3; r < 3 + items.length; r++) for (let cI = 2; cI < 18; cI++) { const a = XLSX.utils.encode_cell({r, c: cI}); if (sum[a] && typeof sum[a].v === "number") sum[a].z = pctCols.includes(cI) ? "0.0%" : (cI === 7 ? "0" : "#,##0"); }
+    XLSX.utils.book_append_sheet(wb, sum, "물건 목록");
+    const used = {};
+    items.forEach(st => {
+      const rows = detailRows(st), ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [{wch: 24}, {wch: 20}];
+      rows.forEach((r, i) => { const a = "B" + (i + 1); if (ws[a] && typeof ws[a].v === "number")
+        ws[a].z = /율|대비|세율/.test(r[0]) ? "0.0%" : (r[0] === "보유기간 (개월)" ? "0" : "#,##0"); });
+      let nm = String(st.caseNo || "물건").replace(/[\\\/\?\*\[\]:]/g, " ").slice(0, 28) || "물건";
+      while (used[nm]) nm = nm.slice(0, 26) + "_" + (used[nm]++); used[nm] = 1;
+      XLSX.utils.book_append_sheet(wb, ws, nm);
+    });
+    XLSX.writeFile(wb, "경매_낙찰가_계산_" + day + ".xlsx");
+    say("엑셀 파일을 내려받았습니다 (" + items.length + "건)");
+  } catch (e) {                                                  // 인터넷이 막혀 엑셀 도구를 못 받으면 CSV(엑셀에서 열림)로
+    const csv = [SUMH].concat(items.map(sumRow)).map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], {type: "text/csv"}));
+    a.download = "경매_낙찰가_계산_" + day + ".csv"; a.click(); say("CSV로 내려받았습니다(엑셀에서 열림)");
+  }
+};
+fillSaved("");
+render();
+</script>
+</body>
+</html>
