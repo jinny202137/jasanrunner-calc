@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- 시청자 배포용 (2026-10-13 대표님 지시) — 원본 claude.ai 아티팩트 apt-exit-price.html 에서 캡처 읽기 칸만 숨김. 계산이 바뀌면 둘 다 고친다 -->
-<title>소액 아파트 단타 경매 매도가 시뮬레이션 · 자산러너</title>
+<!-- 시청자 배포용 (2026-10-13 대표님 지시) — 원본은 claude.ai 아티팩트 "아파트 경매 단타 계산기". 캡처 읽기 칸만 숨김. 원본이 바뀌면 다시 만든다 -->
+<title>아파트 경매 단타 계산기 · 자산러너</title>
 <meta name="description" content="같은 단지 실거래·매물 호가로 바로 팔리는 가격, 세후 수익, 입찰 상한을 계산합니다. 자산러너 | 다가구의 모든 것">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -147,7 +147,8 @@ details.panel>summary{font-size:13px;font-weight:700}
 <div class="wrap">
 <header class="titlebox">
   <div>
-    <h1>소액 아파트 단타 경매 매도가 시뮬레이션 <span style="font-size:14px;font-weight:500;color:var(--accent)">향·리모델링 반영 · 매매사업자 기준</span></h1>
+    <h1>아파트 경매 단타 계산기</h1>
+    <div style="font-size:14px;font-weight:500;color:var(--ink);margin-top:2px">소액 아파트 단타 경매 매도가 시뮬레이션 <span style="color:var(--accent)">· 향·리모델링 반영 · 매매사업자 기준</span></div>
     <p class="sub">경매로 낙찰받은 소액 <b>아파트</b>를 매매사업자로 바로 되팔 때, 얼마에 팔리고 세금 내고 얼마가 남는지, 얼마까지 입찰해도 되는지 계산합니다. 금액 단위는 전부 만원. 같은 단지·같은 평형의 실거래와 매물 호가로 비교하므로 <b>아파트 전용</b>입니다(빌라·다세대는 비교 대상이 들쭉날쭉해 맞지 않음).</p>
     <ol class="steps">
       <li><b>①</b> 노란 칸에 내 물건 정보 입력</li>
@@ -160,13 +161,21 @@ details.panel>summary{font-size:13px;font-weight:700}
   <section class="panel summary" style="margin-bottom:18px">
     <h2>결론 <small>매매사업자로 바로 되파는 경우</small></h2>
     <div class="case" id="caseLabel"></div>
+    <h2 style="margin-top:4px">먼저 입력하기 <small>낙찰가·기타비용 → 남는 돈과 입찰 상한 / 향 할인 → 바로 팔리는 가격</small></h2>
+    <div class="fields sum4">
+      <label>낙찰가(만원)<input id="bid" type="number" value="3720"></label>
+      <label>향 할인 (남향 대비 %, 직접 입력)<input id="dirDisc" type="number" step="0.5" value="-10"><span class="sugg" id="dirSuggest"></span></label>
+      <label>기타비용(명도·수리·법무)<input id="other" type="number" value="300"></label>
+    </div>
+    <div style="height:14px"></div>
 
     <div class="answer" id="answer">
       <div class="grp gA">
         <div class="gt">이 가격에 팔면 <small>지금 낙찰가 기준</small></div>
         <div class="pair">
           <div class="ans a1"><div class="k">바로 팔리는 가격</div><div class="v" id="aQuick">–</div><div class="d" id="aQuickD"></div>
-            <label class="inl">어떤 기준으로?<select id="quickBasis"><option value="auto">자동 (실거래 4건 이상이면 실거래)</option><option value="trade">실거래 하위 25%</option><option value="ask">가장 싼 경쟁 매물보다 1% 싸게</option></select></label></div>
+            <label class="inl">어떤 기준으로?<select id="quickBasis"><option value="trade">실거래 하위 25%</option><option value="ask">가장 싼 경쟁 매물보다 1% 싸게</option></select></label>
+            <label class="inl">향 할인은?<select id="dirPick" aria-label="향 할인 선택"></select></label></div>
           <div class="ans a2" id="aNetBox"><div class="k">세금 내고 남는 돈</div><div class="v" id="aNet">–</div><div class="d" id="aNetD"></div></div>
         </div>
       </div>
@@ -191,12 +200,7 @@ details.panel>summary{font-size:13px;font-weight:700}
       <p class="note" id="repNote" style="margin:4px 4px 0"></p>
     </div>
     <p class="calc" id="calcLine"></p>
-    <h2 style="margin-top:16px">바꿔 보기 <small>세 칸 모두에 영향</small></h2>
-    <div class="fields sum4">
-      <label>낙찰가(만원)<input id="bid" type="number" value="3720"></label>
-      <label>향 할인 (남향 대비 %, 직접 입력)<input id="dirDisc" type="number" step="0.5" value="-10"><span class="sugg" id="dirSuggest"></span></label>
-      <label>기타비용(명도·수리·법무)<input id="other" type="number" value="300"></label>
-    </div>
+    
   </section>
 
 <section class="panel" style="margin-bottom:18px" id="uploadPanel" hidden>
@@ -600,7 +604,7 @@ function run(){
   if(sc!=='기본'&&!cpNote){cp=sc==='올수리'?15:5; cpNote=`${sc} +${cp}%(기본 가정)`}
   const k=1+cp/100;
   const tq=rnd(pct(vals,q)*(1-extra/100)*k);
-  const qb=$('quickBasis').value, useAsk=qb==='ask'||(qb==='auto'&&inc.length<4&&isFinite(aq));
+  const qb=$('quickBasis').value||'trade', fallback=qb!=='ask'&&inc.length<4&&isFinite(aq), useAsk=qb==='ask'||fallback;
   const quick=useAsk?aq:tq, mid=rnd(pct(vals,50)*k), high=rnd(pct(vals,75)*k);
   const condInfo={};
   try{const A=parseAsks($('asks').value);
@@ -614,7 +618,7 @@ function run(){
       const aqc=adj.length?rnd(Math.min(...adj)*0.99):NaN, tqc=rnd(pct(vals,q)*(1-extra/100)*(1+cpc/100));
       condInfo[c]={price:useAsk?aqc:tqc,cp:cpc,src};
     }}catch(e){}
-  const quickNote=useAsk?'같은 상태 최저 매물보다 1% 싸게':`실거래 하위 ${q}%`+(cpNote?` · ${cpNote}`:'');
+  const quickNote=fallback?'실거래가 부족해 매물 기준(최저 매물보다 1% 싸게)으로 계산':useAsk?'같은 상태 최저 매물보다 1% 싸게':`실거래 하위 ${q}%`+(cpNote?` · ${cpNote}`:'');
   last={condInfo,quick,quickNote,tq,aq,mid,high,fAdj,D,fs,ds,months,nInc:inc.length,g,midBase:pct(inc.map(r=>r.base0*Math.pow(1+g/100,r.age)),50)};
 
   const show=(id,v)=>{$(id).innerHTML=isFinite(v)?`${fmt(v)}<span>만원</span>`:'–'};
@@ -644,13 +648,15 @@ function run(){
   const gs=grp('남'), ge=grp('동·서');
   let est=NaN; if(gs.length>=3&&ge.length>=3) est=(pct(ge,50)/pct(gs,50)-1)*100;
   const curD=D[$('dir').value]??0;
-  const sens=[-5,-8,-10,-12,-15].map(x=>{const f=(1+x/100)/(1+curD/100);return [x,rnd(quick*f),rnd(mid*f)]});
+  const qb0=(useAsk?aq:pct(vals,q)*(1-extra/100)*k)/(1+ds/100), mb0=pct(vals,50)*k/(1+ds/100);
+  last.qBase=rnd(qb0);
+  const sens=[0,-5,-8,-10,-12,-15].map(x=>[x,rnd(qb0*(1+x/100)),rnd(mb0*(1+x/100))]);
   const dirName=$('dir').value;
   $('dirBox').innerHTML = dirName==='남'?'':
     `<h2>${dirName}향 할인을 바꾸면 <small>지금 적용: ${curD}%</small></h2>
-     <div class="tbl"><table><thead><tr><th>남향 대비 할인</th>${sens.map(s=>`<th>${s[0]}%</th>`).join('')}</tr></thead><tbody>
-     <tr><td>바로 팔리는 가격</td>${sens.map(s=>`<td class="n">${fmt(s[1])}</td>`).join('')}</tr>
-     <tr><td>시세</td>${sens.map(s=>`<td class="n">${fmt(s[2])}</td>`).join('')}</tr></tbody></table></div>
+     <div class="tbl"><table><thead><tr><th>남향 대비 할인</th>${sens.map(s=>`<th${s[0]===curD?' style="color:var(--quick)"':''}>${s[0]===0?'0% (남향 기준)':s[0]+'%'}${s[0]===curD?' ◀ 적용':''}</th>`).join('')}</tr></thead><tbody>
+     <tr><td>바로 팔리는 가격</td>${sens.map(s=>`<td class="n"${s[0]===curD?' style="font-weight:700;color:var(--quick)"':''}>${fmt(s[1])}</td>`).join('')}</tr>
+     <tr><td>시세</td>${sens.map(s=>`<td class="n"${s[0]===curD?' style="font-weight:700"':''}>${fmt(s[2])}</td>`).join('')}</tr></tbody></table></div>
      <p class="note">${isFinite(est)
         ?`<b>이 단지 실거래로 보면 동·서향이 남향보다 ${est.toFixed(1)}% 낮게 거래</b>됐습니다 (층·시점 보정 후 중간값 비교, 남향 ${gs.length}건 · 동·서향 ${ge.length}건). <button id="applyEst">이 값 적용</button>`
         :`실거래에 동 번호가 있고 '동별 향'에 각 동의 향을 적어주면, 이 단지에서 남향과 동향이 실제로 몇 % 차이 나게 팔렸는지 데이터로 계산해 드립니다. 양쪽 다 3건 이상 필요.`}</p>`;
@@ -771,14 +777,25 @@ function drawDirSuggest(){
   el.innerHTML=`매물 기준 <b>${v>0?'+':''}${v}%</b> (같은 수리 상태끼리 남향 ${r.ns}개 vs ${r.dir}향 ${r.ne}개) <button type="button" id="dirApply">적용</button>`;
   $('dirApply').onclick=()=>{$('dirDisc').value=v;run()};
 }
+function syncDirPick(){
+  const el=$('dirPick'), cur=+$('dirDisc').value||0, r=dirFromAsks(), dir=$('dir').value;
+  const opts=[['0','0% (남향 기준)']];
+  if(dir!=='남'&&isFinite(r.gap)&&r.ne>=2){const v=Math.round(r.gap*10)/10; opts.push([String(v),`${v}% (네이버 매물 호가 기준)`])}
+  for(const v of [-5,-10,-15,-20]) if(!opts.some(o=>+o[0]===v)) opts.push([String(v),`${v}%`]);
+  if(!opts.some(o=>+o[0]===cur)) opts.push([String(cur),`${cur}% (직접 입력)`]);
+  opts.sort((a,b)=>+b[0]-+a[0]);
+  el.innerHTML=opts.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('');
+  el.value=String(opts.find(o=>+o[0]===cur)[0]);
+}
 function drawAnswer(){
+  syncDirPick();
   const ids=['aQuick','aNet','aMax','aNet2'];
   if(!last||!isFinite(last.quick)){ids.forEach(i=>$(i).textContent='–');$('aQuickD').textContent='실거래나 매물 데이터를 넣으면 계산됩니다';$('calcLine').textContent='';return}
   OTHER=Math.max(0,+$('otherInc').value||0);
   const sale=last.quick, bid=+$('bid').value, acq=+$('acq').value, other=+$('other').value, target=+$('target').value;
   const r=pl(sale,bid,acq,other,'biz'), mb=maxBid(sale,acq,other,'biz',target), r2=isFinite(mb)?pl(sale,mb,acq,other,'biz'):null;
   const big=(id,v)=>{$(id).innerHTML=isFinite(v)?`${fmt(v)}<span>만원</span>`:'불가'};
-  big('aQuick',sale); $('aQuickD').textContent=`${$('floor').value}층 ${$('dir').value}향(${$('dirDisc').value}%) · ${$('subCond').value} 상태 · ${last.quickNote}`;
+  big('aQuick',sale); $('aQuickD').innerHTML=`${last.quickNote} · ${$('floor').value}층 · ${$('subCond').value} 상태<br>남향 기준 <b>${fmt(last.qBase)}</b> → 향 ${$('dirDisc').value}% → <b>${fmt(sale)}</b>`;
   big('aNet',r.net); $('aNetBox').classList.toggle('neg',r.net<0); $('aNetD').textContent=`낙찰가 ${fmt(bid)}만원일 때 · 투입 현금 대비 ${(r.net/r.cash*100).toFixed(1)}%`;
   big('aMax',mb);
   $('aMaxD').textContent=isFinite(mb)?`매도가 ${fmt(sale)}만원 기준 · 지금 낙찰가 ${fmt(bid)}는 ${bid<=mb?'상한 안쪽':'상한 초과'}`:'이 매도가로는 목표 이익을 낼 수 없음';
@@ -820,6 +837,7 @@ $('sample').addEventListener('click',()=>{$('raw').value=SAMPLE;run()});
 $('clear').addEventListener('click',()=>{$('raw').value='';run()});
 let prevArea=$('area').value;
 $('area').addEventListener('change',()=>{const v=$('area').value; if($('areaMin').value===prevArea||!$('areaMin').value)$('areaMin').value=v; if($('areaMax').value===prevArea||!$('areaMax').value)$('areaMax').value=v; prevArea=v; run()});
+$('dirPick').addEventListener('change',()=>{$('dirDisc').value=$('dirPick').value;run()});
 $('dir').addEventListener('change',()=>{const v=$('dir').value;$('dirDisc').value=v==='남'?0:v==='북'?$('d3').value:v==='동·서'?$('d2').value:$('d1').value;run()});
 // ===== 캡처 업로드 & 읽기 =====
 const imgs=[]; let sampleFn=null, imgLimit=null, ctl=null;
@@ -904,13 +922,12 @@ $('readBtn').onclick=async()=>{
 $('asksSample').addEventListener('click',()=>{$('asks').value=SAMPLE_ASK;run()});
 $('asksClear').addEventListener('click',()=>{$('asks').value='';run()});
 $('asks').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(run,400)});
-document.querySelectorAll('input,select').forEach(e=>e.addEventListener('change',()=>{if(e.id==='dir'||e.id==='area')return; if(['bid','acq','other','saleBasis','target','otherInc'].includes(e.id))drawPL();else run()}));
+document.querySelectorAll('input,select').forEach(e=>e.addEventListener('change',()=>{if(e.id==='dir'||e.id==='area'||e.id==='dirPick')return; if(['bid','acq','other','saleBasis','target','otherInc'].includes(e.id))drawPL();else run()}));
 let tm;$('raw').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(run,400)});
 $('dongDir').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(run,400)});
-load(); if(!$('raw').value.trim())$('raw').value=SAMPLE; if(!$('asks').value.trim())$('asks').value=SAMPLE_ASK;
+load(); if(!$('quickBasis').value)$('quickBasis').value='trade'; if(!$('raw').value.trim())$('raw').value=SAMPLE; if(!$('asks').value.trim())$('asks').value=SAMPLE_ASK;
 run();
 })();
 </script>
-
 </body>
 </html>
