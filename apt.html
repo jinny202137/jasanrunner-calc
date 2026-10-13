@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 시청자 배포용 (2026-10-13 대표님 지시) — 원본 claude.ai 아티팩트 apt-exit-price.html 에서 캡처 읽기 칸만 숨김. 계산이 바뀌면 둘 다 고친다 -->
+<title>소액 아파트 단타 경매 매도가 시뮬레이션 · 자산러너</title>
+<meta name="description" content="같은 단지 실거래·매물 호가로 바로 팔리는 가격, 세후 수익, 입찰 상한을 계산합니다. 자산러너 | 다가구의 모든 것">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 좌측 입력 레일 + 우측 결과(가격 사다리 → 분포 차트 → 수익표 → 거래 목록). 폰에선 한 줄로 쌓임 */
+:root{
+  --bg:#f3f5f3; --panel:#ffffff; --ink:#1c2725; --muted:#5d6b67; --line:#d9e0dc;
+  --accent:#1d6b58; --accent-soft:#e1efe9; --quick:#b5651d; --quick-soft:#f7ebdf; --high:#3c5a9a;
+  --bad:#b23a3a; --chip:#eef2ef; --high-soft:#e6ecf7; --in-bg:#fff4c2; --in-line:#e3c75a;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121816; --panel:#1a2220; --ink:#e3ebe8; --muted:#97a6a1; --line:#2c3835;
+  --accent:#5fbf9f; --accent-soft:#1f3530; --quick:#e39b57; --quick-soft:#3a2a1c; --high:#8fa9e3;
+  --bad:#e57b7b; --chip:#222c29; --high-soft:#1f2738; --in-bg:#3b3418; --in-line:#7a6a2a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121816; --panel:#1a2220; --ink:#e3ebe8; --muted:#97a6a1; --line:#2c3835;
+  --accent:#5fbf9f; --accent-soft:#1f3530; --quick:#e39b57; --quick-soft:#3a2a1c; --high:#8fa9e3;
+  --bad:#e57b7b; --chip:#222c29; --high-soft:#1f2738; --in-bg:#3b3418; --in-line:#7a6a2a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:20px 48px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;margin-bottom:18px}
+h1{font-size:22px;margin:0;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+.case{display:inline-block;font-size:12.5px;color:var(--ink);background:var(--chip);border-radius:20px;padding:4px 12px;margin:-2px 0 12px}
+.titlebox{display:block;background:var(--panel);border:2px solid var(--accent);border-radius:10px;padding:18px 20px}
+.titlebox h1{font-size:26px;color:var(--accent)}
+.titlebox h1 span{color:var(--ink)!important}
+.sub{color:var(--muted);margin:4px 0 0;max-width:62ch}
+.grid{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+h2{font-size:13px;font-weight:700;margin:0 0 10px;letter-spacing:.02em}
+h2 small{font-weight:400;color:var(--muted);margin-left:6px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fields .full{grid-column:1/-1}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--in-bg);border:1px solid var(--in-line);border-radius:5px;padding:7px 9px;width:100%;min-width:0}
+input[type=number]{font-family:var(--f-num)}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+textarea{font-family:var(--f-num);font-size:12px;min-height:170px;resize:vertical;white-space:pre;overflow-x:auto}
+.check{flex-direction:row;align-items:center;gap:6px;color:var(--ink)}
+.check input{width:auto}
+.range{display:flex;align-items:center;gap:4px}
+.range input{flex:1 1 0}
+input:disabled{background:var(--bg);border-color:var(--line);color:var(--muted)}
+.legend{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.legend i{width:14px;height:14px;border-radius:3px;background:var(--in-bg);border:1px solid var(--in-line);display:inline-block}
+.steps{display:flex;flex-wrap:wrap;gap:6px 18px;margin:10px 0 0;padding:0;list-style:none;font-size:13px}
+.steps li b{color:var(--accent)}
+.drop{border:2px dashed var(--in-line);background:var(--in-bg);border-radius:8px;padding:18px;text-align:center;cursor:pointer;color:var(--ink)}
+.drop.over{border-color:var(--accent)}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.thumbs figure{margin:0;position:relative;width:72px}
+.thumbs img{width:72px;height:96px;object-fit:cover;border-radius:4px;border:1px solid var(--line);display:block}
+.thumbs button{position:absolute;top:2px;right:2px;padding:0 5px;font-size:11px;line-height:16px}
+.status{font-size:12.5px;margin-top:8px;color:var(--muted)}
+.status.ok{color:var(--accent)} .status.bad{color:var(--bad)}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+button{font:inherit;font-size:12px;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:5px;padding:6px 10px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+details summary{cursor:pointer;font-size:13px;font-weight:700}
+details[open] summary{margin-bottom:10px}
+.coef{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
+/* 가격 사다리 */
+.ladder{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.ladder{grid-template-columns:minmax(0,1fr)}}
+.rung{border-radius:7px;padding:12px 14px;border:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.rung .k{font-size:12px;color:var(--muted)}
+.rung .v{font-family:var(--f-num);font-size:26px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.rung .v span{font-size:13px;color:var(--muted);margin-left:2px}
+.rung .d{font-size:12px;color:var(--muted)}
+.rung.quick{background:var(--quick-soft);border-color:var(--quick)}
+.rung.quick .v{color:var(--quick)}
+.rung.mid .v{color:var(--accent)}
+.rung.high .v{color:var(--high)}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{background:var(--chip);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--muted)}
+.chip b{color:var(--ink);font-weight:500;font-family:var(--f-num)}
+.chip.good{background:var(--accent-soft);color:var(--accent)}
+.chip.warn{background:var(--quick-soft);color:var(--quick)}
+.chip.bad{color:var(--bad)}
+.chart{width:100%;overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:520px;height:auto}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+th{font-weight:500;color:var(--muted);font-size:12px}
+th:first-child,td:first-child{text-align:left}
+td.n{font-family:var(--f-num)}
+tr.out td{color:var(--muted);opacity:.6}
+td.why{font-family:var(--f-body);text-align:left;color:var(--muted)}
+.pl td.pos{color:var(--accent)} .pl td.neg{color:var(--bad)}
+.pl tr.sum td{font-weight:700;border-top:2px solid var(--line)}
+.note{font-size:12px;color:var(--muted);margin:10px 0 0;max-width:72ch}
+.note b{color:var(--ink);font-weight:500}
+dl.gloss{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:12px;margin:10px 0 0}
+dl.gloss dt{font-weight:500}
+dl.gloss dd{margin:0;color:var(--muted)}
+.sum4{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.answer{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grp{border-radius:9px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.gA{background:var(--accent-soft)} .gB{background:var(--high-soft)} .gC{background:var(--quick-soft)}
+.gC .gt{color:var(--quick)}
+.rep table{background:var(--panel);border-radius:7px}
+.rep td,.rep th{padding:8px 10px}
+.rep td input{width:90px;text-align:right;font-family:var(--f-num)}
+.rep tr.best td{font-weight:700}
+.rep tr.best td:last-child{color:var(--accent)}
+.gt{font-size:12.5px;font-weight:700;padding:0 4px}
+.gA .gt{color:var(--accent)} .gB .gt{color:var(--high)}
+.gt small{font-weight:400;color:var(--muted);margin-left:4px}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ans{background:var(--panel)!important}
+.ans.a4 .v{color:var(--accent)}
+@media (max-width:900px){.answer{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:440px){.pair{grid-template-columns:minmax(0,1fr)}.ans .v{font-size:24px}}
+.ans{border-radius:7px;padding:12px 14px;background:var(--chip);display:flex;flex-direction:column;gap:2px;min-width:0}
+.ans .k{font-size:12px;color:var(--muted)}
+.ans .v{font-family:var(--f-num);font-size:28px;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ans .v span{font-size:13px;color:var(--muted);margin-left:2px}
+.ans .d{font-size:12px;color:var(--muted)}
+.ans.a1 .v{color:var(--quick)} .ans.a2 .v{color:var(--accent)} .ans.a3 .v{color:var(--high)}
+.ans.neg .v{color:var(--bad)}
+.ans .inl{margin-top:10px;font-size:11.5px}
+.ans .inl select,.ans .inl input{font-size:12.5px;padding:5px 7px}
+.sugg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);margin-top:2px}
+.sugg button{padding:2px 8px;font-size:11.5px}
+.calc{font-size:12.5px;color:var(--muted);margin:12px 0 0;font-variant-numeric:tabular-nums}
+.calc b{color:var(--ink);font-weight:500}
+details.panel>summary{font-size:13px;font-weight:700}
+.err{color:var(--bad);font-size:12px;margin-top:6px}
+@media (prefers-reduced-motion:no-preference){.rung .v{transition:color .2s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="titlebox">
+  <div>
+    <h1>소액 아파트 단타 경매 매도가 시뮬레이션 <span style="font-size:14px;font-weight:500;color:var(--accent)">향·리모델링 반영 · 매매사업자 기준</span></h1>
+    <p class="sub">경매로 낙찰받은 소액 <b>아파트</b>를 매매사업자로 바로 되팔 때, 얼마에 팔리고 세금 내고 얼마가 남는지, 얼마까지 입찰해도 되는지 계산합니다. 금액 단위는 전부 만원. 같은 단지·같은 평형의 실거래와 매물 호가로 비교하므로 <b>아파트 전용</b>입니다(빌라·다세대는 비교 대상이 들쭉날쭉해 맞지 않음).</p>
+    <ol class="steps">
+      <li><b>①</b> 노란 칸에 내 물건 정보 입력</li>
+      <li><b>②</b> 아래 '실거래 데이터'·'매물 호가 데이터' 칸을 펼쳐 내 단지 숫자로 바꾸기</li>
+      <li><b>③</b> 맨 위 결론 확인</li>
+    </ol>
+    <span class="legend" style="margin-top:8px"><i></i> 노란 칸 = 직접 입력하는 칸</span>
+  </div>
+</header>
+  <section class="panel summary" style="margin-bottom:18px">
+    <h2>결론 <small>매매사업자로 바로 되파는 경우</small></h2>
+    <div class="case" id="caseLabel"></div>
+
+    <div class="answer" id="answer">
+      <div class="grp gA">
+        <div class="gt">이 가격에 팔면 <small>지금 낙찰가 기준</small></div>
+        <div class="pair">
+          <div class="ans a1"><div class="k">바로 팔리는 가격</div><div class="v" id="aQuick">–</div><div class="d" id="aQuickD"></div>
+            <label class="inl">어떤 기준으로?<select id="quickBasis"><option value="auto">자동 (실거래 4건 이상이면 실거래)</option><option value="trade">실거래 하위 25%</option><option value="ask">가장 싼 경쟁 매물보다 1% 싸게</option></select></label></div>
+          <div class="ans a2" id="aNetBox"><div class="k">세금 내고 남는 돈</div><div class="v" id="aNet">–</div><div class="d" id="aNetD"></div></div>
+        </div>
+      </div>
+      <div class="grp gB">
+        <div class="gt">이만큼 남기려면 <small>같은 매도가 기준</small></div>
+        <div class="pair">
+          <div class="ans a3"><div class="k">입찰 상한</div><div class="v" id="aMax">–</div><div class="d" id="aMaxD"></div>
+            <label class="inl">얼마 남기고 싶나요? (만원)<input id="target" type="number" value="500"></label></div>
+          <div class="ans a4"><div class="k">세금 내고 남는 돈</div><div class="v" id="aNet2">–</div><div class="d" id="aNet2D"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="grp gC" style="margin-top:12px">
+      <div class="gt">수리하고 팔면? <small>지금 낙찰가 기준 · 수리비만 바꿔 보세요</small></div>
+      <div class="tbl rep"><table>
+        <thead><tr><th>팔 때 상태</th><th>바로 팔리는 가격</th><th>손 안 댄 집 대비</th><th>수리비(만원)</th><th>세금 내고 남는 돈</th></tr></thead>
+        <tbody>
+          <tr id="rr0"><td>손 안 댐 (기본)</td><td class="n" id="rp0">–</td><td class="n">–</td><td class="n">0</td><td class="n" id="rn0">–</td></tr>
+          <tr id="rr1"><td>부분수리 <span class="hint">(도배·장판·싱크대·욕실 등)</span></td><td class="n" id="rp1">–</td><td class="n" id="rd1">–</td><td><input id="repP" type="number" value="600" aria-label="부분수리 비용"></td><td class="n" id="rn1">–</td></tr>
+          <tr id="rr2"><td>올수리 <span class="hint">(샷시 포함 전체)</span></td><td class="n" id="rp2">–</td><td class="n" id="rd2">–</td><td><input id="repF" type="number" value="1800" aria-label="올수리 비용"></td><td class="n" id="rn2">–</td></tr>
+        </tbody></table></div>
+      <p class="note" id="repNote" style="margin:4px 4px 0"></p>
+    </div>
+    <p class="calc" id="calcLine"></p>
+    <h2 style="margin-top:16px">바꿔 보기 <small>세 칸 모두에 영향</small></h2>
+    <div class="fields sum4">
+      <label>낙찰가(만원)<input id="bid" type="number" value="3720"></label>
+      <label>향 할인 (남향 대비 %, 직접 입력)<input id="dirDisc" type="number" step="0.5" value="-10"><span class="sugg" id="dirSuggest"></span></label>
+      <label>기타비용(명도·수리·법무)<input id="other" type="number" value="300"></label>
+    </div>
+  </section>
+
+<section class="panel" style="margin-bottom:18px" id="uploadPanel" hidden>
+  <h2>② 캡처 올리기 <small>네이버 부동산 매물 목록, 실거래가 목록 화면</small></h2>
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="캡처 이미지 선택">
+    여기를 눌러 캡처 이미지를 고르거나, 끌어다 놓거나, 복사한 캡처를 붙여넣기(Ctrl+V) 하세요.<br>
+    <span class="hint">여러 장 한 번에 가능. 같은 단지·같은 평형만 올려주세요.</span>
+  </div>
+  <input type="file" id="fileIn" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+  <div class="thumbs" id="thumbs"></div>
+  <div class="btns">
+    <button class="primary" id="readBtn" disabled>캡처 읽기</button>
+    <button id="stopBtn" hidden>멈추기</button>
+    <button id="clearImgs" hidden>캡처 지우기</button>
+  </div>
+  <div class="status" id="readStatus"></div>
+  <p class="hint">캡처 읽기는 Claude가 화면 속 동·층·향·가격·수리 상태를 읽어 아래 데이터 칸에 채워 넣습니다. 처음 누를 때 허용 창이 뜨고, 보는 사람 본인의 Claude 사용량이 쓰입니다. 다 읽은 뒤 '매물 호가 데이터'를 펼쳐 숫자가 맞는지 한 번 확인하세요.</p>
+</section>
+
+<div class="grid">
+<!-- ===== 입력 ===== -->
+<div class="col">
+  <section class="panel">
+    <h2>① 내 물건 정보</h2>
+    <div class="fields">
+      <label class="full">사건·단지 메모<input id="caseIn" value="군산3계 2024타경26641 · 나운주공5단지 504동 6층 동향 · 전용 58.14㎡(24평형)"></label>
+      <label>전용면적(㎡)<input id="area" type="number" step="0.01" value="58.14"></label>
+      <label>비교할 면적 범위(㎡)
+        <span class="range"><input id="areaMin" type="number" step="0.01" value="58.14" aria-label="최소 면적"><span>~</span><input id="areaMax" type="number" step="0.01" value="58.14" aria-label="최대 면적"></span>
+        <span style="font-size:11px">이 범위 안의 실거래만 비교. 기본은 전용면적과 같은 값</span>
+      </label>
+      
+      <label>해당 층<input id="floor" type="number" value="6"></label>
+      <label>동 최고층<input id="top" type="number" value="15"></label>
+      <label>향 (할인율은 오른쪽 위에서)
+        <select id="dir">
+          <option value="남">남향</option>
+          <option value="남동·남서">남동·남서향</option>
+          <option value="동·서" selected>동·서향</option>
+          <option value="북">북향</option>
+        </select>
+      </label>
+      
+      <label>팔 때 집 상태<select id="subCond"><option value="기본">기본 (낙찰 후 손 안 댐)</option><option value="부분">부분수리</option><option value="올수리">올수리</option></select></label>
+    </div>
+    <p class="hint">향은 실거래 자료에 없어서 직접 골라야 합니다. 지도·임장으로 확인하세요.<br><b>팔 때 집 상태</b>를 부분수리·올수리로 바꾸면 매물에서 뽑은 상태별 가격 차이만큼 바로 팔리는 가격이 올라갑니다. 대신 수리비를 결론의 <b>기타비용</b>에 꼭 더하세요.</p>
+  </section>
+
+  <details class="panel"><summary>실거래 데이터 (붙여넣기·필터)</summary>
+    
+    <label for="raw" style="color:var(--ink)">한 줄에 한 건: 계약일, 전용면적, 층, 금액(만원), 동(선택), 비고(선택)</label>
+    <textarea id="raw" spellcheck="false"></textarea>
+    <div class="btns">
+      <button class="primary" id="run">다시 계산</button>
+      <button id="sample">아실 기본 데이터 다시 넣기</button>
+      <button id="clear">비우기</button>
+    </div>
+    <p class="hint">국토부 실거래가 공개시스템에서 받은 CSV를 머리글째 붙여넣어도 되고, 표를 복사해 붙여도 됩니다. 금액은 6000, 6,000, 0.6억 모두 인식. 비고에 '직거래'·'해제'가 있으면 표시됩니다.</p>
+    <div class="err" id="perr" hidden></div>
+    <div class="fields" style="margin-top:10px">
+      <label>기간(최근 개월)<input id="months" type="number" value="12"></label>
+      <label>대표 향(동 미상 거래)
+        <select id="baseDir">
+          <option value="남">남향</option>
+          <option value="남동·남서">남동·남서향</option>
+          <option value="동·서">동·서향</option>
+          <option value="북">북향</option>
+        </select>
+      </label>
+      <label class="check full"><input id="exDirect" type="checkbox" checked> 직거래 제외 (가족 간 저가 거래가 섞이기 쉬움)</label>
+      <label class="check full"><input id="exCancel" type="checkbox" checked> 해제된 거래 제외</label>
+    </div>
+  </details>
+
+  <details class="panel"><summary>매물 호가 데이터 (네이버 부동산 등)</summary>
+    
+    <label for="asks" style="color:var(--ink)">한 줄에 한 매물: 동, 층/최고층, 향, 호가, 상태, 확인일, 메모</label>
+    <textarea id="asks" spellcheck="false" style="min-height:150px"></textarea>
+    <div class="btns"><button id="asksSample">예시 매물 다시 넣기</button><button id="asksClear">비우기</button></div>
+    <p class="hint">상태는 기본·부분·올수리 셋 중 하나. 메모에 '리모델링'·'올수리'·'샷시'가 있으면 올수리, '부분'·'싱크대'·'욕실'이면 부분으로 자동 분류합니다. 호가는 실제로 팔린 값이 아니라서, 바로 팔리는 가격은 실거래로 잡고 매물은 "경쟁 상대가 누구인지" 보는 데 씁니다.</p>
+  </details>
+
+  <section class="panel">
+    <details>
+      <summary>보정 계수 (층·향·추세, 고급)</summary>
+      <div class="coef">
+        <label>1층(%)<input id="f1" type="number" step="0.5" value="-15"></label>
+        <label>2층(%)<input id="f2" type="number" step="0.5" value="-5"></label>
+        <label>탑층(%)<input id="ftop" type="number" step="0.5" value="-3"></label>
+        <label>중간층(기준)<input value="0" disabled></label>
+        <label>남동·남서향(%)<input id="d1" type="number" step="0.5" value="-1.5"></label>
+        <label>동·서향(%) <span style="font-size:11px">감정 −5</span><input id="d2" type="number" step="0.5" value="-10"></label>
+        <label>북향(%)<input id="d3" type="number" step="0.5" value="-6"></label>
+        <label>남향(기준)<input value="0" disabled></label>
+        <label class="full">동별 향 (선택, 한 줄에 "504 남" 형식)
+          <textarea id="dongDir" style="min-height:64px" placeholder="504 남&#10;507 동·서"></textarea>
+        </label>
+        <label>시세 추세(연 %)<input id="trend" type="number" step="0.5" placeholder="자동"></label>
+        <label>특이사항 가감(%)<input id="cond" type="number" step="0.5" value="0"><span style="font-size:11px">보통 0. 누수·하자 있으면 −5처럼 음수, 확장 등 장점은 +</span></label>
+        <label>바로 팔리는 기준(하위 %)<input id="q" type="number" value="25"></label>
+        <label class="full">급매 추가 할인(%)<input id="extra" type="number" step="0.5" value="0"></label>
+      </div>
+      <p class="hint">추세를 비워두면 거래 데이터에서 자동으로 기울기를 잡습니다(연 ±30%로 제한). 바로 팔리는 가격은 보정된 거래가 중 하위 25% 지점, 즉 "최근에 이 값엔 실제로 산 사람이 있었다"는 선입니다.</p>
+    </details>
+  </section>
+</div>
+
+<!-- ===== 결과 ===== -->
+<div class="col">
+
+  <section class="panel">
+    <h2>예상 매도가 3단계 <small id="basis"></small></h2>
+    <div class="ladder">
+      <div class="rung quick"><div class="k">바로 팔리는 가격</div><div class="v" id="pQuick">–</div><div class="d" id="pQuickD"></div></div>
+      <div class="rung mid"><div class="k">시세 (중간값)</div><div class="v" id="pMid">–</div><div class="d">보정 거래가의 가운데</div></div>
+      <div class="rung high"><div class="k">버티면 받는 가격</div><div class="v" id="pHigh">–</div><div class="d">상위 25% 지점</div></div>
+    </div>
+    <div class="meta" id="meta"></div>
+    <div id="dirBox" style="margin-top:14px"></div>
+  </section>
+
+  <details class="panel"><summary>거래 분포 차트</summary>
+    
+    <div class="chart" id="chart"></div>
+  </details>
+
+  <details class="panel"><summary>경쟁 매물과 비교 (호가)</summary><p class="hint" id="askBasis" style="margin-top:0"></p>
+    
+    <div class="meta" id="askMeta" style="margin-top:0"></div>
+    <div id="askInsight"></div>
+    <div class="tbl" style="margin-top:10px"><table id="askTbl"></table></div>
+  </details>
+
+  <section class="panel">
+    <h2>남는 돈 자세히 <small>매매사업자 vs 개인 비교</small></h2>
+    <div class="fields">
+            <label>취득세율(%)<input id="acq" type="number" step="0.1" value="1.1"></label>
+            <label>매도 가격 기준
+        <select id="saleBasis">
+          <option value="quick">바로 팔리는 가격</option>
+          <option value="mid">시세</option>
+          <option value="high">버티면 받는 가격</option>
+        </select>
+      </label>
+            <label>올해 다른 소득 과세표준(만원)<input id="otherInc" type="number" value="0"><span style="font-size:11px">급여·사업 모두 총액·매출 말고 과세표준 (아래 설명)</span></label>
+    </div>
+    <div class="tbl" style="margin-top:12px">
+      <table class="pl" id="pl"></table>
+    </div>
+    <p class="note" id="plNote"></p>
+    <dl class="gloss">
+      <dt>취득세</dt><dd>집을 살 때 내는 세금. 전용 85㎡ 이하·6억 이하 주택은 1.1%(지방교육세 포함). 공시가격 1억 이하 주택은 집이 여러 채여도 중과(가산 세율)를 안 받습니다.</dd>
+      <dt>양도세</dt><dd>팔아서 남긴 돈에 붙는 세금. 주택은 1년 안에 팔면 남긴 돈의 70%, 2년 안이면 60%. 2년 넘게 들고 있으면 일반 세율(6~45%). 여기에 지방소득세 10%가 더 붙습니다.</dd>
+      <dt>매매사업자</dt><dd>집을 사고파는 걸 사업으로 등록한 개인. 판 이익이 '사업 소득'이 되어 종합소득세로 냅니다. 조정대상지역 다주택 등 특정 경우에만 양도세 중과와 비교해 더 큰 세금을 매기는데(비교과세), 지방 비규제 지역 아파트는 해당하지 않습니다.</dd>
+      <dt>예정신고</dt><dd>매매사업자가 집을 판 달의 말일부터 2개월 안에 그 건 이익에 대한 세금을 미리 신고·납부하는 것. 다음 해 5월 종합소득세 신고 때 1년치를 합쳐 정산합니다.</dd>
+      <dt>과세표준</dt><dd>세금을 매기는 기준 금액. '올해 다른 소득 과세표준' 칸에는 급여든 사업소득이든 <b>총급여나 매출이 아니라 과세표준</b>을 넣으세요.
+        급여는 총급여 − 근로소득공제 − 인적공제·4대보험 등 공제 = 과세표준(연말정산 원천징수영수증의 '과세표준' 칸).
+        사업은 매출 − 필요경비 = 이익, 이익 − 소득공제 = 과세표준(작년 종합소득세 신고서의 '과세표준' 칸).
+        급여와 사업소득이 둘 다 있으면 합친 값이 신고서 과세표준이고, 같은 해 매매사업자로 판 다른 물건 이익도 더해야 합니다. 법인의 이익은 넣지 않습니다(법인세로 따로 냄). 다른 소득이 많을수록 이 물건 이익에 더 높은 세율 구간이 적용됩니다.</dd>
+      <dt>기본공제</dt><dd>개인 양도세에만 있는 공제. 1년에 한 번, 남긴 돈에서 250만원을 빼고 계산합니다. 매매사업자에는 없습니다.</dd>
+      <dt>부가세</dt><dd>전용 85㎡ 이하 주택은 매매사업자가 팔아도 부가세가 붙지 않습니다(면세).</dd>
+      <dt>필요경비</dt><dd>남긴 돈 계산 때 빼주는 비용. 매매사업자는 명도비·수리비·대출이자 등 사업 비용을 넓게 인정받고, 개인 양도세는 도배·장판 같은 소모성 수리비가 인정 안 될 수 있어요. 이 표는 기타비용을 전부 빼고 계산했습니다.</dd>
+    </dl>
+  </section>
+
+  <details class="panel"><summary>계산에 쓰인 실거래 목록 <small id="cnt" style="font-weight:400;color:var(--muted)"></small></summary>
+    
+    <div class="tbl"><table id="comps"></table></div>
+  </details>
+</div>
+</div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const fmt=n=>isFinite(n)?Math.round(n).toLocaleString('ko-KR'):'–';
+const TODAY=new Date();
+
+const SAMPLE=`# 아실 2026년 매매 실거래 (2026.10.13 캡처) · 계약일, 전용면적, 층, 금액(만원), 동, 비고 · 전세·취소 건 제외
+2026-10-09	58.14	7	6200	509
+2026-10-07	58.14	12	6300	504
+2026-09-30	37.67	1	4800	502
+2026-09-30	37.67	2	4400	502	직거래
+2026-09-20	37.67	4	4900	502
+2026-09-18	37.67	8	4400	502
+2026-09-16	58.14	13	4700	511
+2026-09-14	58.14	7	5000	510
+2026-09-03	58.14	8	5900	512
+2026-09-02	37.67	15	4650	502
+2026-08-28	58.14	12	5500	503
+2026-08-22	58.14	10	6200	503
+2026-08-18	58.14	1	4100	511
+2026-07-20	58.14	12	5750	508
+2026-07-17	58.14	11	6000	511
+2026-07-17	58.14	2	4400	503
+2026-07-14	58.14	7	7150	504
+2026-07-13	58.14	10	6300	503
+2026-07-01	58.14	8	6000	511
+2026-06-27	58.14	1	5400	503
+2026-06-16	37.67	1	4700	502
+2026-06-13	58.14	8	5000	504
+2026-06-12	58.14	9	5700	504
+2026-06-08	58.14	2	5200	504
+2026-06-08	58.14	10	5150	508
+2026-06-07	58.14	14	5200	508
+2026-06-06	58.14	8	5700	503
+2026-06-06	58.14	4	5100	505
+2026-06-04	58.14	3	5000	504
+2026-05-30	58.14	14	5100	505
+2026-05-16	58.14	3	5400	509
+2026-05-15	58.14	5	5300	506
+2026-05-10	58.14	15	5000	503
+2026-05-02	58.14	7	5300	508
+2026-05-01	49.69	8	5500	507
+2026-04-23	58.14	3	5000	510
+2026-04-21	58.14	12	6300	508
+2026-04-13	58.14	12	5000	511
+2026-03-30	37.67	15	4800	502
+2026-03-25	58.14	15	5600	501
+2026-03-21	58.14	10	5000	504
+2026-03-13	58.14	5	5000	511	직거래
+2026-03-11	58.14	15	7100	503
+2026-03-07	58.14	8	6200	505
+2026-03-05	58.14	9	5600	510
+2026-02-06	58.14	2	7000	508
+2026-01-24	58.14	7	6350	510
+2026-01-16	58.14	13	6000	511	직거래
+2026-01-13	37.67	11	4300	502
+2026-01-01	58.14	11	6500	509`;
+
+const SAMPLE_ASK=`# 네이버 부동산 23평(전용 58㎡) 매매 매물 · 2026.10.13 캡처 · 같은 호로 보이는 중복 등록 3건 제외
+509	15/15	남	4300	기본	2026-10-08	급매, 전망 좋음, 상태 양호
+504	1/15	남	4500	기본	2026-10-12	
+505	1/15	남	4500	기본	2026-10-02	
+512	15/15	남	4500	기본	2026-10-12	4,500~5,200
+504	3/15	남	5000	기본	2026-10-12	급매, 기본상태, 수리 필요
+504	10/15	동	5300	부분	2026-09-28	부분리모델링, 신흥초 단지 내
+504	7/15	동	5500	기본	2026-10-06	급매, 집주인 등록
+506	3/15	남	5500	기본	2026-10-10	
+504	3/15	남	5500	기본	2026-09-22	
+506	8/15	남	5600	부분	2026-09-14	부분 리모델링 완료
+505	9/15	남	5700	기본	2026-09-28	
+508	1/15	남	5800	올수리	2026-10-06	샷시교체·내부리모델링, 월세 1000/30 끼고
+504	15/15	남	5800	올수리	2026-09-21	내부리모델링(화장실·싱크대). 같은 호 5,700 등록도 있음
+504	10/15	동	5900	올수리	2026-09-28	리모델링, 갭투자 500
+501	3/15	남	6000	기본	2026-10-08	6,000~6,500
+509	4/15	남	6000	기본	2026-09-28	
+504	11/15	남	6000	부분	2026-10-01	싱크대·욕실 교체
+503	3/15	남	6000	부분	2026-09-28	부분수리, 상태 양호
+508	12/15	남	6000	올수리	2026-10-03	내부리모델링
+501	15/15	남	6300	기본	2026-09-29	
+503	2/15	남	6300	기본	2026-10-02	중앙난방 정남
+506	8/15	남	6500	기본	2026-10-11	
+504	10/15	동	6500	올수리	2026-10-11	리모델링, 집상태 깨끗
+504	12/15	남	6800	올수리	2026-09-28	공실, 내부올수리·샷시 일부 교체
+503	11/15	남	7300	올수리	2026-09-16	내부리모델링, 즉시입주
+512	3/15	남	7500	올수리	2026-09-18	샷시·내부 전체 리모델링, 베란다 확장
+503	15/15	남	7500	올수리	2026-09-14	탑층, 샷시 포함 전체 리모델링`;
+const IDS=['repP','repF','areaMin','areaMax','quickBasis','dirDisc','otherInc','asks','subCond','caseIn','area','floor','top','dir','cond','raw','months','baseDir','exDirect','exCancel','f1','f2','ftop','d1','d2','d3','dongDir','trend','q','extra','bid','acq','other','saleBasis','target'];
+const KEY='apt-exit-sim-v6';
+function save(){try{const o={};IDS.forEach(i=>{const e=$(i);o[i]=e.type==='checkbox'?e.checked:e.value});localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+function load(){
+  let ok=false;
+  try{const o=JSON.parse(localStorage.getItem(KEY)||'null');if(o){IDS.forEach(i=>{if(i in o){const e=$(i);if(e.type==='checkbox')e.checked=o[i];else e.value=o[i]}});ok=true}}catch(e){}
+  // 화면 개편 때 저장 키가 바뀌어 예전에 넣은 데이터가 가려진 경우 되살림
+  try{const norm=v=>String(v||'').trim();
+    for(const [id,def] of [['raw',SAMPLE],['asks',SAMPLE_ASK]]){
+      if(norm($(id).value)&&norm($(id).value)!==norm(def))continue;
+      for(let v=6;v>=1;v--){const o=JSON.parse(localStorage.getItem('apt-exit-sim-v'+v)||'null'); const val=o&&norm(o[id]);
+        if(val&&val!==norm(def)&&!val.includes('# 예시: 디아파트')){$(id).value=o[id];break}}
+    }}catch(e){}
+  // 예전 디아파트 예시가 남아 있으면 새 기본 데이터로 교체
+  try{if($('raw').value.includes('# 예시: 디아파트'))$('raw').value=SAMPLE}catch(e){}
+  return ok;
+}
+
+function num(s){
+  if(s==null)return NaN; s=String(s).trim();
+  let m=s.match(/(-?\d+(?:\.\d+)?)\s*억(?:\s*(\d[\d,]*)\s*만?)?/);
+  if(m)return Math.round(parseFloat(m[1])*10000+(m[2]?parseFloat(m[2].replace(/,/g,'')):0));
+  m=s.match(/(\d+(?:\.\d+)?)\s*천/); if(m)return Math.round(parseFloat(m[1])*1000);
+  const c=s.replace(/[,\s원만]/g,'').match(/-?\d+(?:\.\d+)?/); return c?parseFloat(c[0]):NaN;
+}
+function pdate(s){
+  s=String(s||'').trim();
+  let m=s.match(/^(\d{4})[-./\s]?(\d{1,2})[-./\s]?(\d{1,2})/); if(m)return new Date(+m[1],+m[2]-1,+m[3]);
+  m=s.match(/^'?(\d{2})[-./](\d{1,2})[-./](\d{1,2})/); if(m)return new Date(2000+ +m[1],+m[2]-1,+m[3]);
+  return null;
+}
+function csvSplit(line,sep){
+  const out=[];let cur='',q=false;
+  for(let i=0;i<line.length;i++){const ch=line[i];
+    if(ch==='"'){if(q&&line[i+1]==='"'){cur+='"';i++}else q=!q}
+    else if(ch===sep&&!q){out.push(cur);cur=''}
+    else cur+=ch}
+  out.push(cur);return out.map(x=>x.trim());
+}
+function parse(text){
+  const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
+  const rows=[];let bad=0;
+  const hi=lines.findIndex(l=>/전용면적/.test(l)&&/거래금액/.test(l));
+  if(hi>=0){ // 국토부 CSV
+    const sep=lines[hi].includes('\t')?'\t':',';
+    const H=csvSplit(lines[hi],sep);
+    const col=re=>H.findIndex(h=>re.test(h));
+    const cA=col(/전용면적/),cYM=col(/계약년월/),cD=col(/^계약일/),cP=col(/거래금액/),cF=col(/^층/),cDong=col(/^동$/),cX=col(/해제/),cT=col(/거래유형/);
+    for(const l of lines.slice(hi+1)){
+      const c=csvSplit(l,sep); if(c.length<3){continue}
+      let d=null;
+      if(cYM>=0){const ym=c[cYM].replace(/\D/g,'');if(ym.length>=6)d=new Date(+ym.slice(0,4),+ym.slice(4,6)-1,cD>=0?+(c[cD].replace(/\D/g,'')||1):1)}
+      else if(cD>=0)d=pdate(c[cD]);
+      const r={date:d,area:num(c[cA]),floor:Math.round(num(c[cF])),price:num(c[cP]),dong:cDong>=0?c[cDong].replace(/동/,'').trim():'',
+        direct:cT>=0&&/직/.test(c[cT]),cancel:cX>=0&&!!c[cX]&&c[cX]!=='-'};
+      if(r.date&&isFinite(r.area)&&isFinite(r.price))rows.push(r);else bad++;
+    }
+    return {rows,bad};
+  }
+  for(let l of lines){
+    l=l.replace(/^\|/,'').replace(/\|$/,'');
+    let c=l.split(/\t|\s*\|\s*|\s{2,}|,(?!\d{3}(?!\d))/).map(x=>x.trim()).filter(Boolean);
+    if(c.length<4)c=l.split(/[\s,]+/).filter(Boolean);
+    const d=pdate(c[0]); if(!d){ if(/\d/.test(l)&&!/[-:]{3}/.test(l))bad++; continue }
+    const r={date:d,area:num(c[1]),floor:Math.round(num(c[2])),price:num(c[3]),dong:'',direct:false,cancel:false};
+    for(const x of c.slice(4)){
+      if(/^\d{1,4}\s*동?$/.test(x)&&!r.dong)r.dong=x.replace(/동/,'').trim();
+      if(/직/.test(x))r.direct=true;
+      if(/해제/.test(x))r.cancel=true;
+    }
+    if(/직거래|\[직\]/.test(l))r.direct=true;
+    if(isFinite(r.area)&&isFinite(r.price)&&r.price>0)rows.push(r);else bad++;
+  }
+  return {rows,bad};
+}
+
+function pct(arr,p){ if(!arr.length)return NaN; const a=[...arr].sort((x,y)=>x-y); const i=(a.length-1)*p/100; const lo=Math.floor(i),hi=Math.ceil(i); return a[lo]+(a[hi]-a[lo])*(i-lo); }
+function brokerage(p){ if(p<5000)return Math.min(p*0.006,25); if(p<20000)return Math.min(p*0.005,80); if(p<90000)return p*0.004; return p*0.005; }
+function progressive(b){
+  const T=[[1400,.06,0],[5000,.15,126],[8800,.24,576],[15000,.35,1544],[30000,.38,1994],[50000,.40,2594],[100000,.42,3594],[Infinity,.45,6594]];
+  for(const [lim,r,d] of T) if(b<=lim) return Math.max(0,b*r-d); return 0;
+}
+let OTHER=0;
+function cgt(gain,hold){ if(hold==='biz'){ return (progressive(OTHER+gain)-progressive(OTHER))*1.1 } const base=Math.max(0,gain-250); let t=hold==='lt1'?base*.7:hold==='lt2'?base*.6:progressive(base); return t*1.1; }
+function pl(sale,bid,acqRate,other,hold){
+  const acq=bid*acqRate/100, fee=brokerage(sale), gain=sale-bid-acq-other-fee, tax=gain>0?cgt(gain,hold):0;
+  return {acq,fee,gain,tax,net:gain-tax,cash:bid+acq+other};
+}
+function maxBid(sale,acqRate,other,hold,target){
+  let lo=0,hi=sale; if(pl(sale,0,acqRate,other,hold).net<target)return NaN;
+  for(let k=0;k<60;k++){const m=(lo+hi)/2; if(pl(sale,m,acqRate,other,hold).net>=target)lo=m;else hi=m}
+  return Math.floor(lo/10)*10;
+}
+
+let last=null;
+function run(){
+  save();
+  $('caseLabel').textContent=$('caseIn').value;
+  const {rows,bad}=parse($('raw').value);
+  const perr=$('perr'); perr.hidden=!bad; perr.textContent=bad?`인식하지 못한 줄 ${bad}개는 건너뛰었습니다. 계약일·면적·층·금액 순서인지 확인하세요.`:'';
+  const area=+$('area').value, aLo=Math.min(+$('areaMin').value||area,+$('areaMax').value||area)-0.005, aHi=Math.max(+$('areaMin').value||area,+$('areaMax').value||area)+0.005, fl=+$('floor').value, top=+$('top').value, months=+$('months').value||12;
+  const P={f1:+$('f1').value,f2:+$('f2').value,ftop:+$('ftop').value};
+  const D={'남':0,'남동·남서':+$('d1').value,'동·서':+$('d2').value,'북':+$('d3').value};
+  D[$('dir').value]=+$('dirDisc').value||0;
+  const dongMap={}; $('dongDir').value.split(/\n/).forEach(l=>{const m=l.trim().match(/^(\d{1,4})\s*동?\s+(.+)$/); if(m){let v=m[2].replace(/향/g,'').trim(); if(/북/.test(v))v='북';else if(/남동|남서/.test(v))v='남동·남서';else if(/^남/.test(v))v='남';else if(/동|서/.test(v))v='동·서'; dongMap[m[1]]=v}});
+  const fAdj=f=>f<=1?P.f1:f===2?P.f2:(top&&f>=top?P.ftop:0);
+  const baseDir=$('baseDir').value;
+  const exD=$('exDirect').checked, exC=$('exCancel').checked;
+  const cut=new Date(TODAY); cut.setMonth(cut.getMonth()-months);
+
+  rows.forEach(r=>{
+    r.age=(TODAY-r.date)/(365.25*864e5);
+    r.dirUsed=r.dong&&dongMap[r.dong]?dongMap[r.dong]:baseDir;
+    r.fa=fAdj(r.floor); r.da=D[r.dirUsed]??0;
+    r.why=(r.area<aLo||r.area>aHi)?'면적 범위 밖':r.date<cut?'기간 밖':(exC&&r.cancel)?'해제':(exD&&r.direct)?'직거래':'';
+    r.base0=r.price/(1+r.fa/100)/(1+r.da/100);
+  });
+  const inc=rows.filter(r=>!r.why);
+
+  // 추세
+  let g=parseFloat($('trend').value), auto=false;
+  if(!isFinite(g)){
+    auto=true; g=0;
+    if(inc.length>=5){const xs=inc.map(r=>r.age),ys=inc.map(r=>Math.log(r.base0));const span=Math.max(...xs)-Math.min(...xs);
+      if(span>=0.25){const mx=xs.reduce((a,b)=>a+b)/xs.length,my=ys.reduce((a,b)=>a+b)/ys.length;let sxy=0,sxx=0;xs.forEach((x,i)=>{sxy+=(x-mx)*(ys[i]-my);sxx+=(x-mx)**2});const b=sxy/sxx;g=(Math.exp(-b)-1)*100;g=Math.max(-30,Math.min(30,g))}}
+  }
+  const fs=fAdj(fl), ds=D[$('dir').value]??0, cond=+$('cond').value||0;
+  rows.forEach(r=>{r.adj=r.base0*Math.pow(1+g/100,r.age)*(1+fs/100)*(1+ds/100)*(1+cond/100)});
+  const vals=inc.map(r=>r.adj);
+  const q=Math.min(50,Math.max(0,+$('q').value||25)), extra=+$('extra').value||0;
+  const rnd=v=>Math.round(v/10)*10;
+  // 팔 때 집 상태: 매물에서 상태별 가격 차이를 뽑아 실거래 기준 가격에도 반영
+  const sc=$('subCond').value; let aq=NaN, cp=0, cpNote='';
+  try{const A=parseAsks($('asks').value);
+    const fA=a=>{const tp=a.top||top;return a.floor<=1?P.f1:a.floor===2?P.f2:(tp&&a.floor>=tp?P.ftop:0)};
+    const base=a=>a.price/(1+fA(a)/100)/(1+(D[a.dir]??0)/100);
+    const adj=A.filter(a=>a.cond===sc).map(a=>base(a)*(1+fs/100)*(1+ds/100));
+    if(adj.length)aq=rnd(Math.min(...adj)*0.99);
+    if(sc!=='기본'){const b=A.filter(a=>a.cond==='기본').map(base), c=A.filter(a=>a.cond===sc).map(base);
+      if(b.length>=3&&c.length>=2){cp=(pct(c,50)/pct(b,50)-1)*100; cpNote=`${sc} +${cp.toFixed(0)}%(매물 비교)`}}
+  }catch(e){}
+  if(sc!=='기본'&&!cpNote){cp=sc==='올수리'?15:5; cpNote=`${sc} +${cp}%(기본 가정)`}
+  const k=1+cp/100;
+  const tq=rnd(pct(vals,q)*(1-extra/100)*k);
+  const qb=$('quickBasis').value, useAsk=qb==='ask'||(qb==='auto'&&inc.length<4&&isFinite(aq));
+  const quick=useAsk?aq:tq, mid=rnd(pct(vals,50)*k), high=rnd(pct(vals,75)*k);
+  const condInfo={};
+  try{const A=parseAsks($('asks').value);
+    const fA=a=>{const tp=a.top||top;return a.floor<=1?P.f1:a.floor===2?P.f2:(tp&&a.floor>=tp?P.ftop:0)};
+    const base=a=>a.price/(1+fA(a)/100)/(1+(D[a.dir]??0)/100);
+    const b=A.filter(a=>a.cond==='기본').map(base);
+    for(const c of ['기본','부분','올수리']){
+      let cpc=0,src='';
+      if(c!=='기본'){const cc=A.filter(a=>a.cond===c).map(base); if(b.length>=3&&cc.length>=2){cpc=(pct(cc,50)/pct(b,50)-1)*100;src='매물 비교'}else{cpc=c==='올수리'?15:5;src='기본 가정'}}
+      const adj=A.filter(a=>a.cond===c).map(a=>base(a)*(1+fs/100)*(1+ds/100));
+      const aqc=adj.length?rnd(Math.min(...adj)*0.99):NaN, tqc=rnd(pct(vals,q)*(1-extra/100)*(1+cpc/100));
+      condInfo[c]={price:useAsk?aqc:tqc,cp:cpc,src};
+    }}catch(e){}
+  const quickNote=useAsk?'같은 상태 최저 매물보다 1% 싸게':`실거래 하위 ${q}%`+(cpNote?` · ${cpNote}`:'');
+  last={condInfo,quick,quickNote,tq,aq,mid,high,fAdj,D,fs,ds,months,nInc:inc.length,g,midBase:pct(inc.map(r=>r.base0*Math.pow(1+g/100,r.age)),50)};
+
+  const show=(id,v)=>{$(id).innerHTML=isFinite(v)?`${fmt(v)}<span>만원</span>`:'–'};
+  show('pQuick',quick);show('pMid',mid);show('pHigh',high);
+  $('pQuickD').textContent=`보정 거래가 하위 ${q}%${extra?` − 추가 ${extra}%`:''}`;
+  $('basis').textContent=`${fl}층 · ${$('dir').value}향 기준`;
+
+  const n=inc.length;
+  const oldest=n?Math.max(...inc.map(r=>r.age)):0, coverM=Math.max(1,Math.min(months,oldest*12+0.5));
+  const perMonth=n/coverM; last.perMonth=perMonth;
+  const fd=dt=>`${String(dt.getFullYear()).slice(2)}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;
+  const dRange=n?`${fd(new Date(Math.min(...inc.map(r=>r.date))))}~${fd(new Date(Math.max(...inc.map(r=>r.date))))}`:'';
+  const rel=n>=8?['good','표본 충분']:n>=4?['warn','표본 보통']:['bad','표본 부족 — 기간이나 면적 범위를 넓혀보세요'];
+  const spanM=n?Math.round((Math.max(...inc.map(r=>r.age))-Math.min(...inc.map(r=>r.age)))*12):0;
+  $('meta').innerHTML=[
+    `<span class="chip ${rel[0]}">${rel[1]}</span>`,
+    `<span class="chip">동일 평형 거래 <b>${n}</b>건${n?` (${dRange}, 약 ${coverM.toFixed(0)}개월치)`:''}</span>`,
+    `<span class="chip">월 평균 <b>${perMonth.toFixed(1)}</b>건 거래</span>`,
+    `<span class="chip">추세 <b>${g>=0?'+':''}${g.toFixed(1)}%</b>/년 ${auto?'(자동)':'(입력)'}</span>`,
+    n&&spanM<6?`<span class="chip warn">거래가 ${spanM}개월에 몰려 있어 추세는 참고만</span>`:'',
+    `<span class="chip">대상 보정: 층 <b>${fs}%</b> · 향 <b>${ds}%</b>${cond?` · 상태 <b>${cond}%</b>`:''}</span>`
+  ].join('');
+
+  // 향 차이: 데이터 추정(동별 향을 넣은 경우) + 민감도
+  rows.forEach(r=>{r.nd=r.price/(1+r.fa/100)*Math.pow(1+g/100,r.age); r.mapped=r.dong&&dongMap[r.dong]});
+  const grp=k=>inc.filter(r=>r.mapped===k).map(r=>r.nd);
+  const gs=grp('남'), ge=grp('동·서');
+  let est=NaN; if(gs.length>=3&&ge.length>=3) est=(pct(ge,50)/pct(gs,50)-1)*100;
+  const curD=D[$('dir').value]??0;
+  const sens=[-5,-8,-10,-12,-15].map(x=>{const f=(1+x/100)/(1+curD/100);return [x,rnd(quick*f),rnd(mid*f)]});
+  const dirName=$('dir').value;
+  $('dirBox').innerHTML = dirName==='남'?'':
+    `<h2>${dirName}향 할인을 바꾸면 <small>지금 적용: ${curD}%</small></h2>
+     <div class="tbl"><table><thead><tr><th>남향 대비 할인</th>${sens.map(s=>`<th>${s[0]}%</th>`).join('')}</tr></thead><tbody>
+     <tr><td>바로 팔리는 가격</td>${sens.map(s=>`<td class="n">${fmt(s[1])}</td>`).join('')}</tr>
+     <tr><td>시세</td>${sens.map(s=>`<td class="n">${fmt(s[2])}</td>`).join('')}</tr></tbody></table></div>
+     <p class="note">${isFinite(est)
+        ?`<b>이 단지 실거래로 보면 동·서향이 남향보다 ${est.toFixed(1)}% 낮게 거래</b>됐습니다 (층·시점 보정 후 중간값 비교, 남향 ${gs.length}건 · 동·서향 ${ge.length}건). <button id="applyEst">이 값 적용</button>`
+        :`실거래에 동 번호가 있고 '동별 향'에 각 동의 향을 적어주면, 이 단지에서 남향과 동향이 실제로 몇 % 차이 나게 팔렸는지 데이터로 계산해 드립니다. 양쪽 다 3건 이상 필요.`}</p>`;
+  const ab=$('applyEst'); if(ab) ab.onclick=()=>{$('dirDisc').value=est.toFixed(1); run()};
+  drawChart(rows,cut,{quick,mid,high});
+  drawComps(rows);
+  drawDirSuggest();
+  drawPL();
+  drawAsks();
+}
+
+function drawChart(rows,cut,b){
+  const el=$('chart'); const pts=rows.filter(r=>r.date>=new Date(cut.getTime()-0)||!r.why);
+  const all=rows.filter(r=>r.why!=='면적 범위 밖');
+  if(!all.length){el.innerHTML='<p class="hint">같은 평형 거래가 없습니다.</p>';return}
+  const W=720,H=260,L=56,R=110,T=14,B=30;
+  const t0=Math.min(cut.getTime(),...all.map(r=>r.date.getTime())), t1=TODAY.getTime();
+  const ys=all.map(r=>r.price).concat([b.quick,b.mid,b.high].filter(isFinite));
+  let y0=Math.min(...ys),y1=Math.max(...ys); const pad=(y1-y0||1000)*0.15; y0=Math.max(0,y0-pad); y1+=pad;
+  const step=[100,200,250,500,1000,2000,2500,5000,10000].find(s=>(y1-y0)/s<=6)||20000;
+  y0=Math.floor(y0/step)*step; y1=Math.ceil(y1/step)*step;
+  const X=t=>L+(t-t0)/(t1-t0||1)*(W-L-R), Y=v=>T+(1-(v-y0)/(y1-y0))*(H-T-B);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="실거래가 분포">`;
+  for(let v=y0;v<=y1+1e-6;v+=step){s+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="var(--f-num)">${fmt(v)}</text>`}
+  // x ticks: months
+  const d=new Date(t0); d.setDate(1); d.setMonth(d.getMonth()+1);
+  const totalM=(t1-t0)/(30.4*864e5), every=totalM>24?6:totalM>12?3:totalM>6?2:1;
+  for(;d.getTime()<=t1;d.setMonth(d.getMonth()+every)){const x=X(d.getTime());s+=`<line x1="${x}" x2="${x}" y1="${H-B}" y2="${H-B+4}" stroke="var(--muted)"/><text x="${x}" y="${H-B+16}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="var(--f-num)">${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}</text>`}
+  const band=(v,c,lab)=>{if(!isFinite(v))return'';const y=Y(v);return `<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${W-R+6}" y="${y+4}" font-size="11" fill="${c}">${lab} ${fmt(v)}</text>`};
+  s+=band(b.high,'var(--high)','상단')+band(b.mid,'var(--accent)','시세')+band(b.quick,'var(--quick)','바로');
+  all.forEach(r=>{const x=X(r.date.getTime()),y=Y(r.price);const out=!!r.why;
+    s+=`<circle cx="${x}" cy="${y}" r="${r.floor<=2?5:4}" fill="${out?'none':'var(--ink)'}" stroke="var(--ink)" stroke-width="1.2" opacity="${out?.45:.85}"><title>${r.date.toLocaleDateString('ko-KR')} · ${r.floor}층 · ${fmt(r.price)}만원${r.why?' · 제외: '+r.why:''}</title></circle>`;
+    if(r.floor<=2&&!out)s+=`<text x="${x+7}" y="${y+4}" font-size="10" fill="var(--muted)">${r.floor}층</text>`});
+  s+=`</svg>`; el.innerHTML=s;
+}
+
+function drawComps(rows){
+  const t=$('comps'); const sorted=[...rows].sort((a,b)=>b.date-a.date);
+  const inc=rows.filter(r=>!r.why).length;
+  $('cnt').textContent=`포함 ${inc}건 · 제외 ${rows.length-inc}건`;
+  t.innerHTML=`<thead><tr><th>계약일</th><th>면적</th><th>층</th><th>동·향</th><th>거래가</th><th>대상 기준 환산</th><th style="text-align:left">비고</th></tr></thead><tbody>`+
+   sorted.map(r=>`<tr class="${r.why?'out':''}"><td class="n">${r.date.getFullYear()}.${String(r.date.getMonth()+1).padStart(2,'0')}.${String(r.date.getDate()).padStart(2,'0')}</td><td class="n">${r.area}</td><td class="n">${r.floor}</td><td>${r.dong?r.dong+'동 ':''}${r.dirUsed}${r.dong&&r.dirUsed?'':''}</td><td class="n">${fmt(r.price)}</td><td class="n">${r.why?'':fmt(r.adj)}</td><td class="why">${r.why?'제외: '+r.why:(r.direct?'직거래 ':'')+(r.fa?`층 ${r.fa}%`:'')}</td></tr>`).join('')+`</tbody>`;
+}
+
+function parseAsks(text){
+  const out=[];
+  for(const raw of text.split(/\r?\n/)){
+    const l=raw.trim(); if(!l||l.startsWith('#'))continue;
+    let c=l.split(/\t|\s*\|\s*/).map(x=>x.trim());
+    if(c.filter(Boolean).length<4){const w=l.split(/\s+/);c=w.slice(0,6).concat([w.slice(6).join(' ')])}
+    const fm=String(c[1]||'').match(/(\d+)\s*(?:\/\s*(\d+))?/); if(!fm)continue;
+    const price=num(c[3]); if(!isFinite(price)||price<=0)continue;
+    let dir=String(c[2]||''); dir=/북/.test(dir)?'북':/남동|남서/.test(dir)?'남동·남서':/^남/.test(dir)?'남':/동|서/.test(dir)?'동·서':'남';
+    const memo=(c.slice(6).join(' ')||'').trim(), cs=(c[4]||'')+' '+memo;
+    const cond=/올|전체|리모델링|샷시|새시/.test(c[4]||'')?'올수리':/부분/.test(c[4]||'')?'부분':/기본/.test(c[4]||'')?'기본':
+      /올수리|전체\s*리모델링|샷시|새시/.test(cs)?'올수리':/부분|싱크|욕실|화장실/.test(cs)?'부분':/리모델링/.test(cs)?'올수리':'기본';
+    out.push({dong:String(c[0]).replace(/동/,''),floor:+fm[1],top:+(fm[2]||0),dir,price,cond,date:c[5]||'',memo});
+  }
+  return out;
+}
+function drawAsks(){
+  const t=$('askTbl'), A=parseAsks($('asks').value);
+  if(!last||!A.length){t.innerHTML='';$('askMeta').innerHTML='';$('askInsight').innerHTML='<p class="hint">매물 호가를 넣으면 경쟁 상대와 상태별 가격 차이를 보여줍니다.</p>';return}
+  const {fAdj,D,fs,ds,quick,months,nInc,midBase}=last;
+  const topDefault=+$('top').value;
+  const fA=a=>{const top=a.top||topDefault; return a.floor<=1?(+$('f1').value):a.floor===2?(+$('f2').value):(top&&a.floor>=top?(+$('ftop').value):0)};
+  A.forEach(a=>{a.fa=fA(a);a.da=D[a.dir]??0;a.base=a.price/(1+a.fa/100)/(1+a.da/100);a.adj=a.base*(1+fs/100)*(1+ds/100)});
+  const sc=$('subCond').value;
+  const med=(arr)=>pct(arr,50);
+  const byC=k=>A.filter(a=>a.cond===k);
+  const mB=med(byC('기본').map(a=>a.base)), mP=med(byC('부분').map(a=>a.base)), mF=med(byC('올수리').map(a=>a.base));
+  const comp=A.filter(a=>a.cond===sc).sort((x,y)=>x.adj-y.adj);
+  const minC=comp[0];
+  const perMonth=last.perMonth, inv=perMonth>0?A.length/perMonth:NaN;
+  // 향: 같은 상태끼리 남 vs 동·서 (층 보정, 향 보정 전)
+  const dirRows=['기본','부분','올수리'].map(k=>{const s=A.filter(a=>a.cond===k&&a.dir==='남').map(a=>a.price/(1+a.fa/100)), e=A.filter(a=>a.cond===k&&a.dir==='동·서').map(a=>a.price/(1+a.fa/100)); return {k,s,e,gap:s.length&&e.length?(med(e)/med(s)-1)*100:NaN}}).filter(r=>isFinite(r.gap));
+  const subjBase=quick/(1+fs/100)/(1+ds/100);
+  const rank=1+comp.filter(a=>a.adj<quick).length;
+  const realVsAsk=isFinite(midBase)&&isFinite(mB)?(midBase/mB*100):NaN;
+  $('askBasis').textContent=`${sc} 상태 매물과 비교 · ${fs?`층 ${fs}% `:''}${ds?`향 ${ds}% `:''}보정해 내 물건 기준으로 환산`;
+  $('askMeta').innerHTML=[
+    `<span class="chip">같은 평형 매물 <b>${A.length}</b>개</span>`,
+    isFinite(inv)?`<span class="chip ${inv>6?'warn':'good'}">지금 매물이 다 팔리는 데 약 <b>${inv.toFixed(0)}</b>개월 (월 ${perMonth.toFixed(1)}건 거래 기준)</span>`:'',
+    isFinite(realVsAsk)?`<span class="chip">실거래 중간값 = 기본상태 호가의 <b>${realVsAsk.toFixed(0)}%</b></span>`:''
+  ].join('');
+  const prem=(v)=>isFinite(v)&&isFinite(mB)?`${v>=mB?'+':''}${((v/mB-1)*100).toFixed(0)}%`:'–';
+  $('askInsight').innerHTML=`
+    <div class="tbl" style="margin-top:12px"><table>
+      <thead><tr><th>상태별 호가 (중층·남향 환산 중간값)</th><th>기본</th><th>부분수리</th><th>올수리</th></tr></thead>
+      <tbody><tr><td>호가</td><td class="n">${fmt(mB)}</td><td class="n">${fmt(mP)}</td><td class="n">${fmt(mF)}</td></tr>
+      <tr><td>기본 대비</td><td class="n">0%</td><td class="n">${prem(mP)}</td><td class="n">${prem(mF)}</td></tr></tbody></table></div>
+    <p class="note">${minC?`<b>${sc} 상태 경쟁 매물 중 내 물건 기준으로 가장 싼 건 ${minC.dong}동 ${minC.floor}층 ${minC.dir}향 ${fmt(minC.price)}만원</b> (내 물건 조건으로 환산 ${fmt(minC.adj)}만원). 바로 팔리는 가격 ${fmt(quick)}만원은 같은 상태 매물 ${comp.length}개 중 <b>${rank}번째로 싼 가격</b>입니다.`:'같은 상태 매물이 없습니다.'}
+    ${dirRows.length?` 향 차이(층 보정 후, 같은 상태끼리): ${dirRows.map(r=>`${r.k} 남향 ${r.s.length}개 vs 동향 ${r.e.length}개 → <b>${r.gap.toFixed(1)}%</b>`).join(' · ')}. 매물 수가 적어 참고용입니다.`:''}</p>`;
+  const rows=[...A].sort((x,y)=>x.adj-y.adj);
+  let ins=false;
+  t.innerHTML=`<thead><tr><th>동·층</th><th>향</th><th>상태</th><th>호가</th><th>내 물건 기준</th><th style="text-align:left">메모</th></tr></thead><tbody>`+
+    rows.map(a=>{let pre='';if(!ins&&a.adj>=quick){ins=true;pre=`<tr style="background:var(--quick-soft)"><td><b>내 물건</b></td><td>${$('dir').value}</td><td>${sc}</td><td class="n"></td><td class="n"><b>${fmt(quick)}</b></td><td class="why">바로 팔리는 가격</td></tr>`}
+      return pre+`<tr class="${a.cond===sc?'':'out'}"><td class="n">${a.dong}동 ${a.floor}/${a.top||topDefault}</td><td>${a.dir}</td><td>${a.cond}</td><td class="n">${fmt(a.price)}</td><td class="n">${fmt(a.adj)}</td><td class="why">${a.memo||''}</td></tr>`}).join('')+
+    (ins?'':`<tr style="background:var(--quick-soft)"><td><b>내 물건</b></td><td>${$('dir').value}</td><td>${sc}</td><td></td><td class="n"><b>${fmt(quick)}</b></td><td class="why">바로 팔리는 가격</td></tr>`)+`</tbody>`;
+}
+function dirFromAsks(){
+  const dir=$('dir').value; if(dir==='남')return {dir};
+  const A=parseAsks($('asks').value), top0=+$('top').value;
+  const fa=a=>{const tp=a.top||top0;return a.floor<=1?+$('f1').value:a.floor===2?+$('f2').value:(tp&&a.floor>=tp?+$('ftop').value:0)};
+  let sw=0,sg=0,ns=0,ne=0;
+  for(const k of ['기본','부분','올수리']){
+    const sv=A.filter(a=>a.cond===k&&a.dir==='남').map(a=>a.price/(1+fa(a)/100));
+    const ev=A.filter(a=>a.cond===k&&a.dir===dir).map(a=>a.price/(1+fa(a)/100));
+    if(sv.length&&ev.length){const w=Math.min(sv.length,ev.length);sg+=(pct(ev,50)/pct(sv,50)-1)*100*w;sw+=w;ns+=sv.length;ne+=ev.length}
+  }
+  return {dir,gap:sw?sg/sw:NaN,ns,ne};
+}
+function drawDirSuggest(){
+  const el=$('dirSuggest'), r=dirFromAsks();
+  if(r.dir==='남'){el.textContent='남향은 할인 없음(0%)';return}
+  if(!isFinite(r.gap)||r.ne<2){el.textContent=`매물 기준: ${r.dir}향 매물이 ${r.ne||0}개라 계산 불가 (같은 상태 남향·${r.dir}향 매물이 필요)`;return}
+  const v=Math.round(r.gap*10)/10;
+  el.innerHTML=`매물 기준 <b>${v>0?'+':''}${v}%</b> (같은 수리 상태끼리 남향 ${r.ns}개 vs ${r.dir}향 ${r.ne}개) <button type="button" id="dirApply">적용</button>`;
+  $('dirApply').onclick=()=>{$('dirDisc').value=v;run()};
+}
+function drawAnswer(){
+  const ids=['aQuick','aNet','aMax','aNet2'];
+  if(!last||!isFinite(last.quick)){ids.forEach(i=>$(i).textContent='–');$('aQuickD').textContent='실거래나 매물 데이터를 넣으면 계산됩니다';$('calcLine').textContent='';return}
+  OTHER=Math.max(0,+$('otherInc').value||0);
+  const sale=last.quick, bid=+$('bid').value, acq=+$('acq').value, other=+$('other').value, target=+$('target').value;
+  const r=pl(sale,bid,acq,other,'biz'), mb=maxBid(sale,acq,other,'biz',target), r2=isFinite(mb)?pl(sale,mb,acq,other,'biz'):null;
+  const big=(id,v)=>{$(id).innerHTML=isFinite(v)?`${fmt(v)}<span>만원</span>`:'불가'};
+  big('aQuick',sale); $('aQuickD').textContent=`${$('floor').value}층 ${$('dir').value}향(${$('dirDisc').value}%) · ${$('subCond').value} 상태 · ${last.quickNote}`;
+  big('aNet',r.net); $('aNetBox').classList.toggle('neg',r.net<0); $('aNetD').textContent=`낙찰가 ${fmt(bid)}만원일 때 · 투입 현금 대비 ${(r.net/r.cash*100).toFixed(1)}%`;
+  big('aMax',mb);
+  $('aMaxD').textContent=isFinite(mb)?`매도가 ${fmt(sale)}만원 기준 · 지금 낙찰가 ${fmt(bid)}는 ${bid<=mb?'상한 안쪽':'상한 초과'}`:'이 매도가로는 목표 이익을 낼 수 없음';
+  big('aNet2',r2?r2.net:NaN); $('aNet2D').textContent=r2?`입찰 상한 ${fmt(mb)}만원에 낙찰받았을 때 · 투입 현금 대비 ${(r2.net/r2.cash*100).toFixed(1)}%`:'';
+  const CI=last.condInfo||{}, rep=[0,+$('repP').value||0,+$('repF').value||0], keys=['기본','부분','올수리'];
+  let best=-1,bestNet=-Infinity; const nets=[];
+  keys.forEach((k,i)=>{const c=CI[k]; const pr=c?c.price:NaN; const n=isFinite(pr)?pl(pr,bid,acq,other+rep[i],'biz').net:NaN; nets.push(n);
+    $('rp'+i).textContent=isFinite(pr)?fmt(pr)+'만원':'–'; $('rn'+i).textContent=isFinite(n)?fmt(n)+'만원':'–';
+    if(i)$('rd'+i).textContent=c?`+${c.cp.toFixed(0)}%`+(c.src==='기본 가정'?' (가정)':''):'–';
+    if(isFinite(n)&&n>bestNet){bestNet=n;best=i}});
+  keys.forEach((k,i)=>$('rr'+i).classList.toggle('best',i===best));
+  $('repNote').innerHTML=best>=0?`<b>${['손 안 대고','부분수리 하고','올수리 하고'][best]} 파는 게 가장 많이 남습니다</b>${best?` (손 안 댄 집보다 ${fmt(bestNet-nets[0])}만원 더)`:''}. 수리 후 가격 차이는 네이버 매물의 상태별 호가 차이로 계산했어요. 수리하는 기간만큼 매도가 늦어지는 점도 감안하세요.`:'';
+  const alt=isFinite(last.tq)&&isFinite(last.aq)?` <br>참고: 실거래 기준 ${fmt(last.tq)} · 매물 기준(최저 매물보다 1% 싸게) ${fmt(last.aq)}`:'';
+  $('calcLine').innerHTML=`계산: 매도가 <b>${fmt(sale)}</b> − 낙찰가 <b>${fmt(bid)}</b> − 취득세 <b>${fmt(r.acq)}</b> − 기타비용 <b>${fmt(other)}</b> − 중개수수료 <b>${fmt(r.fee)}</b> = 세전 이익 <b>${fmt(r.gain)}</b> → 세금 <b>${fmt(r.tax)}</b> → 남는 돈 <b>${fmt(r.net)}</b>만원`+alt;
+}
+function drawPL(){
+  save();
+  drawAnswer();
+  if(!last)return;
+  const sale=last[$('saleBasis').value], bid=+$('bid').value, acq=+$('acq').value, other=+$('other').value, target=+$('target').value;
+  const t=$('pl');
+  if(!isFinite(sale)){t.innerHTML='';$('plNote').textContent='매도가를 먼저 계산할 수 있도록 실거래를 넣어주세요.';return}
+  OTHER=Math.max(0,+$('otherInc').value||0);
+  const H=[['biz','매매사업자'],['lt1','개인 · 1년 안 매도'],['ge2','개인 · 2년 넘게 보유']];
+  const R=H.map(([k])=>pl(sale,bid,acq,other,k));
+  const cls=v=>v>=0?'pos':'neg';
+  const row=(lab,f,c)=>`<tr${c?` class="${c}"`:''}><td>${lab}</td>${R.map(r=>{const v=f(r);return `<td class="n ${c==='sum'?cls(v):''}">${fmt(v)}</td>`}).join('')}</tr>`;
+  const mb=H.map(([k])=>maxBid(sale,acq,other,k,target));
+  t.innerHTML=`<thead><tr><th>매도가 ${fmt(sale)}만원 기준</th>${H.map(h=>`<th>${h[1]}</th>`).join('')}</tr></thead><tbody>`+
+    row('낙찰가',()=>bid)+row('취득세',r=>r.acq)+row('기타비용',()=>other)+row('매도 중개수수료',r=>r.fee)+
+    row('세전 차익',r=>r.gain)+row('세금(지방세 포함)',r=>-r.tax)+row('세후 순이익',r=>r.net,'sum')+
+    `<tr><td>투입 현금 대비</td>${R.map(r=>`<td class="n">${(r.net/r.cash*100).toFixed(1)}%</td>`).join('')}</tr>`+
+    `<tr><td>순이익 ${fmt(target)}만원 남기는 입찰 상한</td>${mb.map(v=>`<td class="n"><b>${isFinite(v)?fmt(v):'불가'}</b></td>`).join('')}</tr></tbody>`;
+  $('plNote').innerHTML=`<b>매매사업자로 팔면 70% 단기 양도세 대신 종합소득세 일반 세율(6~45%)</b>이 남긴 돈에 붙습니다. 군산 같은 조정대상지역 밖 주택은 매매사업자 특례(비교과세)를 받지 않기 때문입니다. 다만 세율은 올해 다른 소득과 합쳐서 정해지니, 다른 사업 소득이 있으면 '올해 다른 소득 과세표준'에 넣어야 실제와 맞습니다. 대출 없음, 매도 1건 기준이며, 매매사업자는 팔 때마다 2개월 안에 예정신고·납부를 해야 합니다.`;
+}
+
+$('run').addEventListener('click',run);
+$('sample').addEventListener('click',()=>{$('raw').value=SAMPLE;run()});
+$('clear').addEventListener('click',()=>{$('raw').value='';run()});
+let prevArea=$('area').value;
+$('area').addEventListener('change',()=>{const v=$('area').value; if($('areaMin').value===prevArea||!$('areaMin').value)$('areaMin').value=v; if($('areaMax').value===prevArea||!$('areaMax').value)$('areaMax').value=v; prevArea=v; run()});
+$('dir').addEventListener('change',()=>{const v=$('dir').value;$('dirDisc').value=v==='남'?0:v==='북'?$('d3').value:v==='동·서'?$('d2').value:$('d1').value;run()});
+// ===== 캡처 업로드 & 읽기 =====
+const imgs=[]; let sampleFn=null, imgLimit=null, ctl=null;
+function renderThumbs(){
+  const th=$('thumbs'); th.innerHTML='';
+  imgs.forEach((f,i)=>{const fig=document.createElement('figure');const im=document.createElement('img');im.src=URL.createObjectURL(f);im.alt='캡처 '+(i+1);
+    const b=document.createElement('button');b.textContent='×';b.setAttribute('aria-label','캡처 '+(i+1)+' 빼기');b.onclick=()=>{imgs.splice(i,1);renderThumbs()};fig.append(im,b);th.append(fig)});
+  $('readBtn').disabled=!imgs.length||!sampleFn; $('clearImgs').hidden=!imgs.length;
+  if(imgs.length&&!sampleFn) setStatus('이 화면에서는 캡처 읽기를 쓸 수 없습니다. claude.ai에서 열거나, 데이터 칸에 직접 입력하세요.','bad');
+}
+function addFiles(list){ for(const f of list){ if(/^image\//.test(f.type)) imgs.push(f) } renderThumbs(); if(imgs.length&&sampleFn) setStatus(`캡처 ${imgs.length}장 준비됨. '캡처 읽기'를 누르세요.`) }
+function setStatus(t,c){const el=$('readStatus');el.textContent=t;el.className='status'+(c?' '+c:'')}
+const drop=$('drop');
+drop.onclick=()=>$('fileIn').click();
+drop.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('fileIn').click()}};
+$('fileIn').onchange=e=>{addFiles(e.target.files);e.target.value=''};
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
+drop.ondragleave=()=>drop.classList.remove('over');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');addFiles(e.dataTransfer.files)};
+document.addEventListener('paste',e=>{const fs=[...(e.clipboardData?.files||[])].filter(f=>/^image\//.test(f.type)); if(fs.length){e.preventDefault();addFiles(fs)}});
+$('clearImgs').onclick=()=>{imgs.length=0;renderThumbs();setStatus('')};
+$('stopBtn').onclick=()=>ctl?.abort();
+const PROMPT=`이미지들은 한국 부동산 앱(네이버 부동산 등) 화면 캡처입니다. 아파트 '매물 목록'이거나 '실거래가 목록'입니다. 화면에 보이는 항목을 빠짐없이 JSON으로 옮겨 주세요.
+반드시 이 형식의 JSON 하나로만 답하세요:
+{"listings":[{"dong":"504","floor":10,"top":15,"dir":"남","price":5300,"cond":"부분","date":"2026-09-28","memo":"부분리모델링"}],
+ "trades":[{"date":"2026-10-09","area":58.14,"floor":7,"price":5950,"dong":""}]}
+규칙:
+- listings = 매물(호가). trades = 실제 거래된 실거래가. 없는 쪽은 빈 배열.
+- 금액은 만원 단위 정수. 예: "5,300"→5300, "1억 2,000"→12000, "0.6억"→6000. 범위 "4,500~5,200"은 낮은 값 4500을 price로 하고 memo에 범위를 적기.
+- 층: "15/15층"이면 floor 15, top 15. 저/중/고층처럼 숫자가 없으면 floor는 null.
+- dir: 남, 남동, 남서, 동, 서, 북, 북동, 북서 중 하나. 없으면 "".
+- cond: 설명에 전체/올수리/리모델링/샷시(새시) 교체가 있으면 "올수리", 싱크대·욕실·도배 등 일부 수리면 "부분", 그 외나 '수리 필요'는 "기본".
+- date: 매물은 확인매물·등록 날짜, 실거래는 계약일. YYYY-MM-DD.
+- memo: 매물 설명 문구를 짧게.
+- 여러 캡처에 같은 매물(같은 동·층·향·가격·중개사)이 반복되면 한 번만.
+- 잘려서 가격이나 층을 못 읽는 항목은 빼기. 화면에 없는 값은 지어내지 말기.`;
+function dirTxt(d){d=String(d||'');return /북/.test(d)?'북':/남동|남서/.test(d)?'남동·남서':/남/.test(d)?'남':/동|서/.test(d)?'동·서':''}
+function appendRows(id,lines){
+  const ta=$(id); const have=new Set(ta.value.split(/\n/).map(l=>l.split('\t').slice(0,4).join('|')));
+  let n=0; const add=[];
+  for(const l of lines){const k=l.split('\t').slice(0,4).join('|'); if(!have.has(k)){have.add(k);add.push(l);n++}}
+  if(add.length) ta.value=(ta.value.trim()?ta.value.trim()+'\n':'')+add.join('\n');
+  return n;
+}
+$('readBtn').onclick=async()=>{
+  if(!sampleFn||!imgs.length)return;
+  const max=Math.min(2,imgLimit?.maxCount||2); const chunks=[]; for(let i=0;i<imgs.length;i+=max)chunks.push(imgs.slice(i,i+max));
+  $('readBtn').disabled=true; $('stopBtn').hidden=false;
+  let L=[],T=[],done=0;
+  try{
+    for(let c=0;c<chunks.length;c++){
+      setStatus(`캡처 읽는 중… (${c+1}/${chunks.length}) 처음엔 허용 창이 뜰 수 있어요. 2장씩 나눠 읽어서 장당 20~40초 걸립니다.`);
+      ctl=new AbortController();
+      const out=await sampleFn.json(PROMPT,{images:chunks[c],signal:ctl.signal});
+      const l1=Array.isArray(out?.listings)?out.listings:[], t1=Array.isArray(out?.trades)?out.trades:[];
+      L=L.concat(l1); T=T.concat(t1); done+=chunks[c].length;
+    }
+    const la=L.filter(x=>isFinite(+x.price)&&+x.price>0&&x.floor!=null).map(x=>[String(x.dong||'').replace(/동/,''),`${+x.floor}/${+x.top||+$('top').value||''}`,dirTxt(x.dir)||'남',Math.round(+x.price),['기본','부분','올수리'].includes(x.cond)?x.cond:'기본',x.date||'',String(x.memo||'').replace(/[\t\n]/g,' ')].join('\t'));
+    const ta=T.filter(x=>isFinite(+x.price)&&+x.price>0&&x.date).map(x=>[x.date,isFinite(+x.area)&&+x.area>0?+x.area:+$('area').value,isFinite(+x.floor)?+x.floor:'',Math.round(+x.price),String(x.dong||'').replace(/동/,'')].join('\t'));
+    const n1=appendRows('asks',la), n2=appendRows('raw',ta);
+    run();
+    setStatus(`다 읽었습니다. 매물 ${n1}개, 실거래 ${n2}건을 추가했어요${(la.length-n1)+(ta.length-n2)?` (이미 있던 ${(la.length-n1)+(ta.length-n2)}개는 건너뜀)`:''}. 아래 데이터 칸을 펼쳐 숫자를 확인하세요.`,'ok');
+    imgs.length=0; renderThumbs();
+  }catch(e){
+    console.error('capture read failed',e);
+    const msg={cancelled:'멈췄습니다.',not_granted:'Claude 사용을 허용하지 않아 읽을 수 없습니다. 데이터 칸에 직접 입력해 주세요.',sampling_disabled:'이 계정에서는 Claude를 쓸 수 없습니다.',images_unavailable:'이 화면에서는 이미지를 보낼 수 없습니다.',image_rejected:'읽을 수 없는 이미지가 있습니다. PNG나 JPG 캡처로 다시 올려 주세요.',rate_limited:'잠시 사용량이 많습니다. 조금 뒤 다시 눌러 주세요.',invalid_json:'결과를 정리하지 못했습니다. 캡처를 몇 장씩 나눠서 다시 시도해 보세요.',refused:'이 캡처는 읽을 수 없었습니다.'}[e?.code]||'읽는 중 문제가 생겼습니다. 캡처를 1~2장만 남기고 다시 눌러 보세요.';
+    let kept='';
+    if(L.length||T.length){
+      const la=L.filter(x=>isFinite(+x.price)&&+x.price>0&&x.floor!=null).map(x=>[String(x.dong||'').replace(/동/,''),`${+x.floor}/${+x.top||+$('top').value||''}`,dirTxt(x.dir)||'남',Math.round(+x.price),['기본','부분','올수리'].includes(x.cond)?x.cond:'기본',x.date||'',String(x.memo||'').replace(/[\t\n]/g,' ')].join('\t'));
+      const ta=T.filter(x=>isFinite(+x.price)&&+x.price>0&&x.date).map(x=>[x.date,isFinite(+x.area)&&+x.area>0?+x.area:+$('area').value,isFinite(+x.floor)?+x.floor:'',Math.round(+x.price),String(x.dong||'').replace(/동/,'')].join('\t'));
+      const n1=appendRows('asks',la),n2=appendRows('raw',ta); imgs.splice(0,done); renderThumbs(); run();
+      kept=` 앞서 읽은 ${done}장(매물 ${n1}개, 실거래 ${n2}건)은 반영했고, 남은 ${imgs.length}장만 다시 누르면 됩니다.`;
+    }
+    const code=e?.code?` [오류 코드: ${e.code}]`:(e?.message?` [${e.message}]`:'');
+    setStatus(msg+kept+code, e?.code==='cancelled'?'':'bad');
+  }finally{ $('stopBtn').hidden=true; $('readBtn').disabled=!imgs.length; }
+};
+(async()=>{ try{ sampleFn=await window.claude?.use?.('sample'); if(sampleFn){ imgLimit=(await sampleFn.limits().catch(()=>null))?.images||null; if(!imgLimit) sampleFn=null } }catch(e){ sampleFn=null }
+  if(!sampleFn){ setStatus('이 화면에서는 캡처 자동 읽기를 쓸 수 없습니다. 아래 데이터 칸에 직접 붙여넣어 주세요.'); }
+  else $('fileIn').accept=imgLimit.mediaTypes.join(',');
+  renderThumbs(); })();
+$('asksSample').addEventListener('click',()=>{$('asks').value=SAMPLE_ASK;run()});
+$('asksClear').addEventListener('click',()=>{$('asks').value='';run()});
+$('asks').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(run,400)});
+document.querySelectorAll('input,select').forEach(e=>e.addEventListener('change',()=>{if(e.id==='dir'||e.id==='area')return; if(['bid','acq','other','saleBasis','target','otherInc'].includes(e.id))drawPL();else run()}));
+let tm;$('raw').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(run,400)});
+$('dongDir').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(run,400)});
+load(); if(!$('raw').value.trim())$('raw').value=SAMPLE; if(!$('asks').value.trim())$('asks').value=SAMPLE_ASK;
+run();
+})();
+</script>
+
+</body>
+</html>
