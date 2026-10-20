@@ -65,6 +65,16 @@ table.c tr.gr td{background:var(--gray);font-weight:800} table.c tr.me td{backgr
 .btn.xl{background:#217346;color:#fff;border-color:#217346;font-weight:700}
 .msg{font-size:12px;color:#217346;font-weight:700}
 td.v input.addr{text-align:left;font-size:13px}
+/* 매도가 분석 (10/20) */
+body.noai .ai{display:none!important}
+.rec{display:inline-block;margin-top:2px;background:#e8f4ec;border:1px solid #9cc9ab;color:#1e6b3a;border-radius:5px;padding:1px 6px;font-size:11px;font-weight:700;cursor:pointer}
+.mk-top{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media(max-width:780px){.mk-top{display:block}}
+.mkres td.v{font-size:15px;font-weight:800;color:var(--navy)} .mkres tr.big td.v{font-size:20px;color:#1e6b3a}
+table.c td input{width:100%;border:0;background:var(--yel);font-family:inherit;font-size:12px;text-align:right;padding:3px 4px;color:var(--blue)}
+table.c td input.l{text-align:left} table.c tr.off td{color:#9aa3af;background:#fafafa} table.c tr.off td input{background:#f1f1f1;color:#9aa3af}
+table.c td.why{font-size:11px;color:var(--sub);text-align:left;white-space:normal}
+textarea.paste{width:100%;height:90px;border:1px dashed #9aa6b8;border-radius:6px;padding:8px;font-family:inherit;font-size:12px}
 </style>
 </head>
 <body>
@@ -89,6 +99,10 @@ td.v input.addr{text-align:left;font-size:13px}
       <button class="btn xl" id="bXl">엑셀로 내려받기</button>
       <span class="msg" id="msg"></span>
     </div>
+    <!-- 경매 정보 붙여 넣기 (10/20 대표님: 경매 개요·감정평가서를 넣으면 기본 정보가 자동으로 채워지게, 직접 고쳐도 되게) -->
+    <table class="t" style="margin-bottom:6px"><tr><th>경매 정보 붙여 넣기 <small>· 사건번호·주소·감정가·최저가와 '매도가 분석'의 면적·준공·층을 채웁니다 (채운 뒤 직접 고쳐도 됨)</small></th></tr></table>
+    <textarea class="paste" id="auPaste" style="height:70px" placeholder="경매 사이트(지지옥션 등)·법원 경매정보의 물건 화면 글자를 복사해 붙여 넣고 '붙여 넣은 글자 읽기'를 누르세요 (Ctrl+A → Ctrl+C → 여기 Ctrl+V). 경매 개요·감정평가서 캡처·PDF는 여기에 붙여 넣거나 끌어다 놓으면 AI가 읽습니다."></textarea>
+    <div style="display:flex;gap:6px;margin:6px 0 12px;flex-wrap:wrap;align-items:center"><button class="btn pri" id="auAdd" style="margin:0">붙여 넣은 글자 읽기</button><button class="btn ai" id="auFileB" style="margin:0">캡처 파일 고르기 (AI 클로드 사용)</button><input type="file" id="auFile" accept="image/*,.pdf" multiple style="display:none"><span class="msg" id="auMsg"></span></div>
     <div class="cols">
       <div id="left"></div>
       <div class="right"><div id="defBox"></div><div id="sumBox"></div></div>
@@ -96,9 +110,28 @@ td.v input.addr{text-align:left;font-size:13px}
     <div class="foot">자산러너 | 다가구의 모든 것 · 유튜브 @자산러너다가구투자 · 아는 것이 노후를 지킵니다</div>
   </section>
 
-  <!-- 시트 2: 입찰가별 비교 -->
+  <!-- 시트 1-2: 매도가 분석 (10/20 대표님: 네이버 같은 지역 매물을 넣으면 면적·연식·층을 따져 적정 매도가 추천) -->
+  <section class="pane" id="p-mk">
+    <h1 style="font-size:18px">매도가 분석 — 주변 매물·실거래로 적정 매도가 추천</h1>
+    <div class="sub">노란 칸만 넣으세요. 추천 금액은 '계산기'의 예상 매도가 옆에 뜨고, 눌러서 그대로 넣거나 직접 고쳐 적으시면 됩니다. <b>금액 단위: 만원 · 면적: 전용</b></div>
+    <div class="mk-top">
+      <div id="mkL"></div>
+      <div id="mkR"></div>
+    </div>
+    <div id="mkList"></div>
+    <div id="mkDeal"></div>
+    <div class="sub" style="margin-top:6px">※ 매물 가격은 파는 사람이 부른 값(호가)이라 실제 거래가보다 높습니다 — '호가 할인율'로 낮춰 봅니다. 같은 건물·인근 실거래(감정평가서의 거래사례 등)가 있으면 함께 넣으세요. 참고용 계산입니다.</div>
+  </section>
+
+  <!-- 시트 2: 입찰가별 수익률 비교 -->
   <section class="pane" id="p-cmp">
-    <h1 style="font-size:18px">입찰가별 비교 — 얼마까지 써도 남을까</h1>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap">
+      <h1 style="font-size:18px">입찰가별 수익률 비교 — 얼마까지 써도 남을까</h1>
+      <!-- 10/20 대표님: 여기서도 내 입찰가를 넣게 — '계산기'와 같은 값(어느 쪽에서 바꿔도 함께 바뀜) -->
+      <label style="display:flex;align-items:center;gap:6px;font-weight:800;color:var(--navy);margin-bottom:6px">내 입찰가
+        <input id="cmpBid" inputmode="decimal" style="width:120px;height:32px;border:1px solid #d8c56a;border-radius:5px;background:var(--yel);text-align:right;font-family:inherit;font-size:15px;color:var(--blue);padding:0 8px">
+        <span style="font-weight:400;font-size:12px;color:var(--sub)">만원 <span id="cmpBidE"></span></span></label>
+    </div>
     <div class="sub">'계산기'의 감정가·매도가·보유기간·대출 조건 그대로, 입찰가만 바꿔서 계산합니다. <b>금액 단위: 만원</b></div>
     <div class="wide"><table class="c" id="cmp"></table></div>
     <div class="sub" style="margin-top:8px">※ 세후 순수익이 빨간색(마이너스)이 되는 줄 바로 위가, 이 조건에서 써 볼 수 있는 상한입니다. 참고용 계산입니다.</div>
@@ -122,19 +155,34 @@ td.v input.addr{text-align:left;font-size:13px}
     <p class="h">2. 결과는 '한눈에 보기'와 ⑥ 결과에 나옵니다.</p>
     <p>· 필요 현금(투자금) = 입찰가 + 취득세·등기·법무·명도·수리·미납관리비 − 대출금</p>
     <p>· 세후 순수익 = 매도가 − 매입비용 − 보유기간 이자 − 중개·중도상환수수료 − 양도세(지방소득세 포함)</p>
-    <p class="h">3. '입찰가별 비교'에서 감정가의 60~100%로 썼을 때를 한 번에 봅니다. 순수익이 빨간색이 되기 직전이 상한입니다.</p>
+    <p class="h">3. '입찰가별 수익률 비교'에서 감정가의 60~100%로 썼을 때를 한 번에 봅니다. 순수익이 빨간색이 되기 직전이 상한입니다.</p>
     <p class="h">4. 1세대 1주택 비과세를 '예'로 하면 양도세가 0으로 계산됩니다. 조건(요약):</p>
     <p>· 1세대가 국내에 주택 1채 · 2년 이상 보유 · 취득 당시 조정대상지역이면 2년 이상 거주 · 양도가액 12억 원 이하</p>
     <p>· 조건이 하나라도 다르면 '아니오'로 두세요. 반드시 세무사와 확인하세요.</p>
     <p class="h">5. 기본값(회색 칸)은 바꿔도 됩니다.</p>
     <p>· 필요경비에서 수리비는 빠집니다. 샷시·확장처럼 집의 가치를 올린 공사(자본적 지출)만 증빙이 있으면 인정됩니다.</p>
     <p>· 개인이 산 집의 대출 이자는 양도세 필요경비로 인정되지 않습니다(순수익에서만 뺍니다).</p>
+    <p class="h">6. '매도가 분석' — 주변 매물·실거래로 예상 매도가 추천</p>
+    <p>· ① 이 물건: 건축물대장·경매 개요에서 전용면적(㎡)·준공 연도·층·꼭대기 층 여부를 적습니다.</p>
+    <p>· ② 주변 매물: 네이버 부동산 매물 캡처를 노란 칸에 붙여 넣거나(Ctrl+V, 접속 키가 있는 화면만), 매물 목록 글자를 복사해 붙여 넣고 '붙여 넣은 글자 읽기'를 누릅니다(누구나 가능 — 목록을 끝까지 내려 매물을 다 띄운 뒤 Ctrl+A → Ctrl+C). 지하층·15년 이내 신축·면적 차이가 큰 매물은 자동으로 빠지고 이유가 적힙니다. 체크로 넣고 뺄 수 있습니다.</p>
+    <p>· ③ 실거래: 같은 건물·인근의 실제 거래(감정평가서 거래사례, 국토부 실거래가)를 적습니다. 네이버에서 매물 상세창을 연 채로 복사하면 그 매물의 최근 3년 실거래가 자동으로 들어갑니다 — 거래 뒤 오른 시세만큼 '시점수정(%)'을 고쳐 주세요.</p>
+    <p class="h">7. 호가 할인율이란</p>
+    <p>· 네이버 매물 가격은 파는 사람이 "이 정도 받고 싶다"고 부른 값(호가)이고, 실제로는 협상해서 그보다 낮게 팔립니다. 그 차이를 몇 %로 볼지 정하는 칸입니다. 8%면 매물 가격에서 8%를 깎아 '실제로 팔릴 값'으로 봅니다.</p>
+    <p>· 기본값 8%의 근거(서교동 예): 감정평가서의 동네 호가 ㎡당 800~850만 원 vs 같은 건물 실제 거래(시점수정 후) ㎡당 약 762만 원 → 5~10% 차이의 중간. 시장이 좋으면 낮추고, 매물이 쌓여 있으면 높입니다.</p>
+    <p class="h">8. 오른쪽 '추천 매도가' 읽는 법 (서교동 예: 전용 16.5평)</p>
+    <p>· ① 매물 기준 = 포함된 매물의 전용 평당가 중간값 × 이 물건 전용 평 × (1 − 호가 할인율). 예) 19건 중간값 2,917만 × 16.5평 = 47,988(할인 전) → 8% 할인 = 44,149</p>
+    <p>· ② 실거래 기준 = 실거래 ㎡당 단가(시점수정 반영) × 이 물건 전용㎡. 예) 같은 건물 1층 ㎡당 762만 × 54.39㎡ = 41,439</p>
+    <p>· 추천 = ①과 ②의 평균(100만 단위 반올림). 예) 42,800. 한쪽만 있으면 그 값을 씁니다. ①은 동네 매물 시세, ②는 실제로 팔린 값 — 한쪽만 믿으면 치우치니 반반 섞습니다.</p>
+    <p>· 범위 = 매물 평당가의 하위 25% ~ 상위 25% 지점으로 계산한 값(할인 반영). 예) 41,427 ~ 47,933</p>
+    <p>· '19/25건' = 붙여 넣은 25건 중 지하·신축·대형 6건을 빼고 19건을 썼다는 뜻입니다.</p>
+    <p>· 호가와 실거래 차이가 큰 동네도 있습니다(예: 서교씨티빌라 호가 6억 2천 / 2024년 실거래 4억 2,500). 실거래를 많이 모아 ②에 넣을수록 추천값을 믿을 수 있습니다.</p>
+    <p>· 추천 금액은 '계산기'의 예상 매도가 옆에 뜹니다. 눌러서 그대로 넣거나 직접 고쳐 적으시면 됩니다.</p>
     <p class="h">※ 이 시트는 판단을 돕는 참고용 계산입니다. 투자 권유가 아니며, 대출·세금은 은행·세무사 확인이 필요합니다.</p>
   </section>
 </div>
 
 <nav class="tabs">
-  <button class="on" data-p="p-calc">계산기</button><button data-p="p-cmp">입찰가별 비교</button><button data-p="p-tax">세율표</button><button data-p="p-use">사용법</button>
+  <button class="on" data-p="p-calc">계산기</button><button data-p="p-mk">매도가 분석</button><button data-p="p-cmp">입찰가별 수익률 비교</button><button data-p="p-tax">세율표</button><button data-p="p-use">사용법</button>
 </nav>
 
 <script>
@@ -156,7 +204,7 @@ const num = s => Number(String(s).replace(/[^0-9.\-]/g, "")) || 0;
 const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 const look = b => { let r = BR[0]; for (const x of BR) if (b >= x[0]) r = x; return r; };   // 엑셀 LOOKUP 과 같음
 
-// 엑셀 '계산기' 시트와 같은 식 (bid 만 바꿔 '입찰가별 비교'에도 씀)
+// 엑셀 '계산기' 시트와 같은 식 (bid 만 바꿔 '입찰가별 수익률 비교'에도 씀)
 function calc(bid) {
   const loan = (S.basis === "낙찰가" ? bid : S.appr) * S.ltv / 100;
   const mInt = loan * S.rate / 100 / 12, int = mInt * S.months;
@@ -193,7 +241,7 @@ function render() {
     OUT("최저가율", pct(S.min / S.appr), "감정가 대비") +
     H("② 내 계획") +
     IN("bid", "<b>내 입찰가 (낙찰가)</b>", "써 낼 금액 · " + eok(S.bid)) + OUT("감정가 대비", pct(S.bid / S.appr)) +
-    IN("sell", "<b>예상 매도가</b>", "팔 때 받을 값 — 근거(실거래·호가)를 꼭 확인") +
+    IN("sell", "<b>예상 매도가</b>", (() => { const r = mkCalc(); return r.rec ? `<span class="rec" data-rec="${r.rec}" title="눌러서 예상 매도가에 넣기">추천 ${eok(r.rec * 1e4).replace("원", "")} ▸ 넣기</span><br>'매도가 분석' 탭 근거 · 고쳐 적어도 됨` : "팔 때 받을 값 — '매도가 분석' 탭에 주변 매물을 넣으면 추천 금액이 뜹니다"; })()) +
     IN("months", "보유기간 (개월)", "12개월 미만 세율 70% · 24개월 미만 60%", true) +
     SEL("exempt", "1세대 1주택 비과세", "예 = 양도세 0 (조건은 '사용법')", ["아니오", "예"]) +
     H("③ 대출") +
@@ -228,14 +276,259 @@ function render() {
     `<tr><td class="k"><b>수익률</b></td><td class="v ${c.roi < 0 || ex ? "neg" : ""}">${pct(c.roi)}</td></tr><tr><td class="k"><b>연 환산</b></td><td class="v ${ex ? "neg" : ""}">${pct(c.yr)}</td></tr></table>` +
     (ex ? `<div class="fine neg" style="font-weight:700;margin:0 0 10px">※ 1세대 1주택 비과세 적용 중 (양도세 0)</div>` : "") +
     `<div class="fine">※ 참고용 계산입니다. 대출·세금은 은행·세무사 확인이 필요합니다.</div>`;
-  const rows = [["최저가", S.min, "gr"]].concat([60, 65, 70, 75, 80, 85, 90, 95, 100].map(p => [p + "%", S.appr * p / 100, ""])).concat([["내 입찰가", S.bid, "me"]]);
-  cmp.innerHTML = "<tr><th>감정가 대비</th><th>입찰가</th><th>대출금</th><th>매입 부대비용</th><th>필요 현금</th><th>보유 이자</th><th>실투자금</th><th>팔 때 비용</th><th>세금 합계</th><th>세후 순수익</th><th>수익률</th></tr>" +
+  // 10/20 대표님: 최저가·내 입찰가 줄을 맨 위·맨 아래가 아니라 금액 순서 자리에 끼워 넣는다 (예: 3억 → 65%와 70% 사이). 감정가 대비 %도 함께
+  const rate = b => S.appr ? ` <small>(${(b / S.appr * 100).toFixed(1)}%)</small>` : "";
+  const rows = [["최저가" + rate(S.min), S.min, "gr"]].concat([60, 65, 70, 75, 80, 85, 90, 95, 100].map(p => [p + "%", S.appr * p / 100, ""])).concat([["내 입찰가" + rate(S.bid), S.bid, "me"]])
+    .sort((a, b) => a[1] - b[1] || (a[2] === "me" ? 1 : -1));
+  cmp.innerHTML = "<tr><th>감정가 대비</th><th>입찰가</th><th>예상 매도가</th><th>대출금</th><th>매입 부대비용</th><th>필요 현금</th><th>보유 이자</th><th>실투자금</th><th>팔 때 비용</th><th>세금 합계</th><th>세후 순수익</th><th>수익률</th></tr>" +
     rows.map(([l, b, cl]) => { const x = calc(b);
-      return `<tr class="${cl}"><td>${l}</td><td>${won(b)}</td><td>${won(x.loan)}</td><td>${won(x.totalBuy - b)}</td><td>${won(x.cash)}</td><td>${won(x.int)}</td><td>${won(x.invest)}</td><td>${won(x.fee + x.pre)}</td><td class="${ex ? "neg" : ""}">${won(x.taxAll)}</td><td class="${x.net < 0 || ex ? "neg" : ""}">${won(x.net)}</td><td class="${x.roi < 0 || ex ? "neg" : ""}">${pct(x.roi)}</td></tr>`; }).join("");
+      return `<tr class="${cl}"><td>${l}</td><td>${won(b)}</td><td>${won(S.sell)}</td><td>${won(x.loan)}</td><td>${won(x.totalBuy - b)}</td><td>${won(x.cash)}</td><td>${won(x.int)}</td><td>${won(x.invest)}</td><td>${won(x.fee + x.pre)}</td><td class="${ex ? "neg" : ""}">${won(x.taxAll)}</td><td class="${x.net < 0 || ex ? "neg" : ""}">${won(x.net)}</td><td class="${x.roi < 0 || ex ? "neg" : ""}">${pct(x.roi)}</td></tr>`; }).join("");
   document.querySelectorAll("[data-k]").forEach(el => el.addEventListener("change", () => {
     S[el.dataset.k] = (el.tagName === "SELECT" || el.dataset.t === "text") ? el.value.trim() : num(el.value) * (el.dataset.u === "man" ? 1e4 : 1);
     localStorage.setItem(KEY, JSON.stringify(S)); setTimeout(render, 0);
   }));
+  if (document.activeElement !== cmpBid) cmpBid.value = won(S.bid).replace("-", "0");
+  cmpBidE.textContent = "· " + eok(S.bid) + (S.appr ? ` · 감정가 대비 ${(S.bid / S.appr * 100).toFixed(1)}%` : "");
+  cmpBid.onchange = () => { S.bid = num(cmpBid.value) * 1e4; localStorage.setItem(KEY, JSON.stringify(S)); render(); };
+  const rb = left.querySelector(".rec");
+  if (rb) rb.onclick = () => { S.sell = Number(rb.dataset.rec) * 1e4; localStorage.setItem(KEY, JSON.stringify(S)); render(); say("추천 매도가를 넣었습니다 — 고쳐 적으셔도 됩니다"); };
+  mkRender();
+}
+
+// ── 매도가 분석 (10/20 대표님) ─────────────────────────────────────
+//   주변 매물(호가) 전용 평당가 중앙값 × 이 물건 전용 평 × (1 − 호가 할인율)  … ①
+//   실거래(같은 건물·인근) ㎡당 단가 × 시점수정 × 이 물건 전용㎡          … ②
+//   추천 = ①·② 평균 (한쪽만 있으면 그 값). 지하·신축(15년 이내)·면적 차이 큰 매물은 처음부터 빼 두고, 체크로 넣고 뺄 수 있다.
+const PY = 3.305785;
+const MK0 = {area: 0, year: 0, floor: "", top: "아니오", disc: 8, list: [], deals: []};
+// 2026타경50496 서교동 377-14 401호 시험 자료 — 네이버 매물 캡처 31건(중복 4건 뺌) · 감정평가서 거래사례 1 (10/20)
+const SEED_50496 = {area: 54.39, year: 1996, floor: "4", top: "예", disc: 8,
+  list: [["서교동 다세대(476-36)",35000,14,"3/3",0],["서교동 빌라",32000,16,"B1/2",1989],["서교동 연립",62000,21,"2/2",1976],["서교동 빌라",50000,19,"5/5",2002],
+    ["서교동 빌라",65000,20,"3/5",2002],["서교동 빌라(2020 신축)",67000,13,"고/6",2020],["서교동 빌라",70000,23,"4/4",2001],["서교동 대경드림빌 A동",53000,19,"4/5",0],
+    ["서교동 다세대(369-39)",35000,12,"1/2",0],["서교동 청기와(482-20)",50000,19,"2/4",0],["서교동 초계빌라(382-10)",55000,14,"2/5",0],["서교동 서교씨티빌라(477-20)",62000,19,"2/4",0],
+    ["서교동 빌라",49000,19,"B1/4",2001],["서교동 다세대(375-12)",57000,19,"1/4",0],["서교동 빌라",121000,33,"2/3",1993],["서교동 다세대(474-12)",52000,21,"3/3",0],
+    ["서교동 빌라",38000,12,"2/2",1986],["서교동 다세대(376-17)",47000,21,"B1/2",0],["서교동 빌라",70000,23,"1/3",1992],["서교동 다세대(395-147)",63000,21,"2/5",0],
+    ["서교동 다세대(358-101)",68000,25,"저/?",0],["서교동 빌라",52000,19,"1/3",1996],["서교동 빌라",55000,19,"1/4",2001],["서교동 청기와빌라(448-32)",61000,22,"2/5",0],
+    ["서교동 빌라",27000,13,"B1/2",1989],["서교동 빌라",61000,21,"5/5",2002],["서교동 미래위너스(380-46,도시형)",60000,16,"3/6",0]]
+    .map(([n, p, a, f, y]) => ({n, p, a, f, y, on: null})),
+  deals: [{n: "같은 건물 1층 (감정평가서 거래사례1)", p: 36000, a: 50.37, d: "2025-06", adj: 6.6}]};
+const MK = () => { if (!S.mk) S.mk = /50496/.test(String(S.caseNo).replace(/\s/g, "")) ? JSON.parse(JSON.stringify(SEED_50496)) : JSON.parse(JSON.stringify(MK0)); return S.mk; };
+const isB = f => /^(B|지)/i.test(String(f || "").trim());
+// 처음부터 뺄 매물 — 이유를 함께 보여 준다 (대표님이 체크로 되살릴 수 있다)
+function autoOff(x, m) {
+  if (isB(x.f)) return "지하층";
+  if (x.y && x.y >= new Date().getFullYear() - 15) return "신축(15년 이내)";
+  const tp = m.area / PY; if (tp && x.a && (x.a > tp * 1.6 || x.a < tp * 0.6)) return "면적 차이 큼";
+  return "";
+}
+function mkCalc() {
+  const m = MK(), tp = (m.area || 0) / PY, med = a => { const s = a.slice().sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : 0; };
+  const use = m.list.filter(x => x.p && x.a && (x.on === null || x.on === undefined ? !autoOff(x, m) : x.on));
+  const pp = use.map(x => x.p / x.a), mp = med(pp);
+  const ask = tp && mp ? mp * tp : 0, askAdj = ask * (1 - (m.disc || 0) / 100);
+  const ds = m.deals.filter(d => d.p && d.a), dm2 = ds.length ? ds.reduce((s, d) => s + d.p / d.a * (1 + (d.adj || 0) / 100), 0) / ds.length : 0;
+  const deal = dm2 * (m.area || 0);
+  const parts = [askAdj, deal].filter(v => v > 0), rec = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length / 100) * 100 : 0;
+  const q = pp.slice().sort((a, b) => a - b), lo = q.length >= 4 ? q[Math.floor(q.length / 4)] * tp * (1 - (m.disc || 0) / 100) : 0, hi = q.length >= 4 ? q[Math.floor(q.length * 3 / 4)] * tp * (1 - (m.disc || 0) / 100) : 0;
+  return {tp, n: use.length, all: m.list.length, mp, ask, askAdj, dm2, deal, rec, lo: Math.min(lo || rec, deal || rec, rec), hi: Math.max(hi, rec)};
+}
+// 네이버 부동산 매물 목록 글자(Ctrl+A → Ctrl+C) 붙여넣기 → 매물 줄로
+function parseNaver(t) {
+  const out = [], chunks = String(t).split(/(?=매매\s*\d)/);
+  for (let i = 1; i < chunks.length; i++) {
+    // 한 매물 = '매매 …' 부터 '매물 보러가기'·'관심매물' 전까지 (10/20 실제 네이버 복사 글자로 맞춤 — 뒤 매물·상세창 글자가 섞이지 않게)
+    const c = chunks[i].split(/매물 보러가기|관심매물|중개사 \d+곳에서|면적 단위 변경/)[0], prev = chunks[i - 1].trim().split(/\n/).filter(Boolean);
+    const pm = c.match(/매매\s*(?:(\d+)억)?\s*([\d,]+)?/); if (!pm) continue;
+    const p = (Number(pm[1] || 0) * 10000) + Number(String(pm[2] || "0").replace(/,/g, "")); if (!p) continue;
+    let a = 0, am = c.match(/전용\s*([\d.]+)\s*(㎡|m²)?/); if (am) a = am[2] ? Number(am[1]) / PY : Number(am[1]);
+    if (!a) continue;   // 면적 없는 '매매' 글자(맨 위 최근 본 매물 등)는 매물이 아니다
+    // 준공은 '1989.05(38년차)' 형태만 — '확인매물 2026.10.14' 날짜를 준공으로 읽지 않게
+    const fm = c.match(/((?:B|지하)?\d+|고|중|저)\s*\/\s*(\d+)\s*층/), ym = c.match(/((?:19|20)\d\d)\.\d\d\s*\(\d+년차\)/);
+    out.push({n: (prev[prev.length - 1] || "매물").slice(0, 30), p, a: Math.round(a * 10) / 10, f: fm ? fm[1].replace("지하", "B") + "/" + fm[2] : "", y: ym ? Number(ym[1]) : 0, on: null});
+  }
+  out.deals = parseNaverDeals(t);
+  return out;
+}
+// 매물을 눌러 연 상세창의 '국토부 실거래가'(동일면적 매매) → ③ 실거래 줄 (10/20 대표님). 최근 3년 거래만.
+//   글자 모양: "2024년 계약" 다음 줄들 "07.02.\t08.14.\t19평\t2층\t최고4억 2,500"
+function parseNaverDeals(t) {
+  t = String(t); const out = [];
+  const nm = t.match(/\n([^\n]+)\n매매\s*[\d억,\s]+\n[\d,]+만원\/3\.3㎡/), name = nm ? nm[1].trim().slice(0, 24) : "상세창 매물";
+  const ex = t.match(/전용면적\s*\n\s*([\d.]+)\s*평/), exA = ex ? Number(ex[1]) : 0;
+  let yr = 0; const cut = new Date().getFullYear() - 3;
+  t.split(/\n/).forEach(l => {
+    const ym = l.match(/^\s*(\d{4})년 계약\s*$/); if (ym) { yr = Number(ym[1]); return; }
+    const m = l.match(/^\s*(\d\d)\.(\d\d)\.\t[^\t]*\t([\d.]+)평\t([^\t]*)\t(?:최고|최저)?\s*(?:(\d+)억)?\s*([\d,]*)\s*$/);
+    if (!m || !yr || yr < cut) return;
+    const p = Number(m[5] || 0) * 10000 + Number((m[6] || "0").replace(/,/g, "")); if (!p) return;
+    const py = exA && Math.abs(exA - Number(m[3])) < 1 ? exA : Number(m[3]);
+    out.push({n: `${name} ${m[4]} (국토부 실거래)`, p, a: Math.round(py * PY * 100) / 100, d: `${yr}-${m[1]}`, adj: 0});
+  });
+  return out;
+}
+const mkSave = () => { localStorage.setItem(KEY, JSON.stringify(S)); render(); };
+// 캡처(이미지·PDF) → 사쿠짱 서버(/api/mk-ocr)가 AI로 읽는다 (10/20). 접속키가 있는 대표님 화면에서만 된다.
+// 공개판(깃허브 등 대표님 서버가 아닌 곳)에서는 AI 캡처 읽기를 숨긴다 — 서버가 없어 동작하지 않는다 (10/20 시청자 배포)
+const AI_OK = location.hostname === "node.tail776ffb.ts.net" || location.hostname === "localhost" || location.protocol === "file:";
+const NOAI_MSG = "캡처 읽기는 지원하지 않습니다 — 화면 글자를 복사(Ctrl+A → Ctrl+C)해 붙여 넣고 '붙여 넣은 글자 읽기'를 눌러 주세요";
+if (!AI_OK) { document.body.classList.add("noai"); auPaste.placeholder = "경매 사이트(지지옥션 등)·법원 경매정보의 물건 화면 글자를 복사해 붙여 넣고 '붙여 넣은 글자 읽기'를 누르세요 (Ctrl+A → Ctrl+C → 여기 Ctrl+V)."; }
+let mkBusy = false;
+const mkTok = () => new URLSearchParams(location.search).get("k") || localStorage.getItem("sakku_token") || "";
+const mkMsgSet = t => { const el = document.getElementById("mkMsg"); if (el) el.textContent = t; };
+async function mkOcr(files) {
+  if (!AI_OK) { alert(NOAI_MSG); return; }
+  if (location.protocol === "file:") {   // 파일로 연 화면은 서버에 못 보낸다 → 지금 입력 그대로 웹 주소로 옮겨 연다
+    const url = "https://node.tail776ffb.ts.net/villa-calc#s=" + encodeURIComponent(JSON.stringify(S));
+    if (confirm("캡처 읽기는 웹 주소에서 됩니다. 지금 입력한 내용 그대로 웹 주소로 열까요?\n(열린 화면에서 캡처를 다시 붙여 넣어 주세요)")) window.open(url, "_blank");
+    return;
+  }
+  if (!mkTok()) { alert("접속 키가 없습니다. 채팅창이나 곳간을 한 번 연 뒤 다시 열어 주세요."); return; }
+  if (mkBusy) { say("앞의 캡처를 읽는 중입니다"); return; }
+  const big = files.filter(f => f.size > 15e6); if (big.length) { alert("15MB 넘는 파일은 못 올립니다: " + big.map(f => f.name).join(", ")); return; }
+  mkBusy = true; mkMsgSet("캡처 " + files.length + "개 올리는 중…");
+  try {
+    const enc = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok({name: f.name || "capture.png", data: String(r.result).split(",")[1]}); r.onerror = no; r.readAsDataURL(f); });
+    const body = JSON.stringify({files: await Promise.all(files.map(enc))});
+    const hd = {"X-Sakku-Token": mkTok(), "Content-Type": "application/json"};
+    const j = await (await fetch("/api/mk-ocr", {method: "POST", headers: hd, body})).json();
+    if (!j.ok) throw new Error(j.msg || j.error || "올리기 실패");
+    mkMsgSet("캡처 읽는 중… (1~3분, 이 화면을 닫지 마세요)");
+    let r = null;
+    for (let i = 0; i < 100 && !(r && !r.pending); i++) { await new Promise(ok => setTimeout(ok, 4000)); r = await (await fetch("/api/mk-ocr?id=" + j.id, {headers: hd})).json(); }
+    if (!r || r.pending) throw new Error("시간이 너무 걸립니다 — 잠시 뒤 다시 해 주세요");
+    if (!r.ok) throw new Error(r.msg || "매물을 읽지 못했습니다");
+    const m = MK(), key = x => [x.p, x.a, x.f, x.y].join("|"), have = new Set(m.list.map(key)); let n = 0, dup = 0;
+    (r.rows || []).forEach(x => { const row = {n: String(x.n || "매물").slice(0, 30), p: num(x.p), a: num(x.a), f: String(x.f || ""), y: num(x.y), on: null};
+      if (!row.p) return; if (have.has(key(row))) { dup++; return; } m.list.push(row); have.add(key(row)); n++; });
+    // 감정평가서 거래사례·국토부 실거래 → ③ 실거래 (10/20 대표님: 감정평가서를 넣으면 실거래가 자동으로)
+    const dk = d => [d.n, d.d, d.p].join("|"), dh = new Set(m.deals.map(dk)); let dn = 0;
+    (r.deals || []).forEach(d => { const x = {n: String(d.n || "거래사례").slice(0, 40), p: num(d.p), a: num(d.a), d: String(d.d || ""), adj: num(d.adj)};
+      if (x.p && x.a && !dh.has(dk(x))) { m.deals.push(x); dh.add(dk(x)); dn++; } });
+    mkBusy = false; mkSave();
+    mkMsgSet((r.rows || []).length ? `캡처에서 매물 ${r.rows.length}건 읽음 → ${n}건 넣음 (같은 매물 ${dup}건 뺌)` : "매물 목록 없음");
+    mkMsgSet(document.getElementById("mkMsg").textContent + (dn ? ` · 실거래 ${dn}건 추가(③ 실거래 표)` : (r.deals || []).length ? " · 실거래는 이미 들어 있음" : "") + " · 추천 금액 다시 계산됨");
+  } catch (e) { mkBusy = false; mkMsgSet(""); alert("캡처 읽기 실패: " + e.message); }
+  mkBusy = false;
+}
+// ── 경매 정보 붙여 넣기 (10/20) ──────────────────────────────────
+//   글자: 지지옥션 '경매 개요'·법원 경매정보·매각물건명세서·건축물대장 글자에서 정규식으로 읽는다(누구나).
+//   캡처: /api/mk-ocr mode=auction → AI가 읽는다(접속 키 화면만). 둘 다 찾은 칸만 채우고, 못 찾은 칸은 그대로 둔다.
+function parseAuction(t) {
+  t = String(t).replace(/\r/g, ""); const o = {}, won = s => Number(String(s).replace(/[^\d]/g, ""));
+  let m = t.match(/(20\d\d)\s*타경\s*(\d+)/); if (m) o.caseNo = `${m[1]} 타경 ${m[2]}`;
+  m = t.match(/소\s*재\s*지\s*\n?\s*(?:\[[^\]]*\]\s*)?(?:\(\d{5}\)\s*)?([^\n]*\d[^\n]*)/); if (m) o.addr = m[1].replace(/\s*\[[^\]]*\]\s*$/, "").replace(/\s+/g, " ").trim().slice(0, 60);
+  m = t.match(/감정(?:평가)?(?:가|액)\s*\n?\s*([\d,]{7,})\s*원/); if (m) o.appr = won(m[1]);
+  m = t.match(/최저(?:가|매각가격)?\s*\n?\s*([\d,]{7,})\s*원/); if (m) o.min = won(m[1]);
+  // 지지옥션 화면은 유찰 뒤에도 지난 회차 최저가를 크게 보여 주고, 이번 회차 금액은 '다음예정 26.11.17(286,720,000원)'에 둔다 (10/20 실제 복사 글자)
+  //   → 표시된 매각기일이 이미 지났고 다음예정 날짜가 오늘 이후면 다음예정 금액이 지금 최저가
+  const dt = (y, mo, d) => new Date((y.length === 2 ? "20" + y : y) + "-" + mo + "-" + d), today = new Date(new Date().toDateString());
+  const nx = t.match(/다음\s*예정\s*\n?\s*(\d{2,4})\.(\d\d)\.(\d\d)\s*\(\s*([\d,]{7,})\s*원/), sd = t.match(/매각\s*기일\s*\n?\s*(\d{2,4})\.(\d\d)\.(\d\d)/);
+  if (nx && sd && dt(sd[1], sd[2], sd[3]) < today && dt(nx[1], nx[2], nx[3]) >= today) { o.min = won(nx[4]); o.minNote = `${nx[2]}/${nx[3]} 회차 최저가`; }
+  m = t.match(/전용\s*\n?\s*([\d.]+)\s*㎡/) || t.match(/건물\s*면적\s*\n?\s*([\d.]+)\s*㎡/) || t.match(/\d+층\s*\d+호\s*\n\s*(?:알씨조|철근콘크리트조|R\.?C조)?\s*\n?\s*([\d.]+)\s*㎡/); if (m) o.area = Number(m[1]);
+  m = t.match(/(?:사용)?승인(?:일)?\s*\n?\s*(\d{2,4})[.\-년]\s*\d{1,2}/); if (m) { let y = Number(m[1]); if (y < 100) y += y > 40 ? 1900 : 2000; o.year = y; }
+  const addr = o.addr || ""; m = addr.match(/(?:지하|B)\s*(\d+)\s*층/) || addr.match(/(\d+)\s*층\s*\d*\s*호?/);
+  if (m) o.floor = (/지하|B/.test(m[0]) ? "B" : "") + m[1];
+  m = t.match(/총\s*(\d+)\s*층/) || t.match(/(\d+)\s*층\s*공동\s*주택/); if (m) o.total = Number(m[1]);
+  if (o.floor && o.total) o.top = String(o.floor) === String(o.total) ? "예" : "아니오";
+  return o;
+}
+function applyAuction(o) {
+  const m = MK(), got = [];
+  const put = (k, v, lb, f) => { if (v === undefined || v === null || v === "" || (typeof v === "number" && !v)) return; f(v); got.push(lb); };
+  put("caseNo", o.caseNo, "사건번호", v => S.caseNo = String(v)); put("addr", o.addr, "주소", v => S.addr = String(v));
+  put("appr", o.appr, "감정가", v => S.appr = num(v)); put("min", o.min, "최저가" + (o.minNote ? `(${o.minNote})` : ""), v => S.min = num(v));
+  put("area", o.area, "전용면적", v => m.area = num(v)); put("year", o.year, "준공", v => m.year = num(v));
+  put("floor", o.floor, "층", v => m.floor = String(v)); put("top", o.top, "꼭대기 층", v => m.top = v === true || v === "예" ? "예" : "아니오");
+  let dn = 0; const dk = d => [d.n, d.d, d.p].join("|"), dh = new Set(m.deals.map(dk));
+  (o.deals || []).forEach(d => { const x = {n: String(d.n || "거래사례").slice(0, 40), p: num(d.p), a: num(d.a), d: String(d.d || ""), adj: num(d.adj)}; if (x.p && x.a && !dh.has(dk(x))) { m.deals.push(x); dh.add(dk(x)); dn++; } });
+  if (dn) got.push(`실거래 ${dn}건`);
+  localStorage.setItem(KEY, JSON.stringify(S)); render();
+  return got;
+}
+const auMsgSet = t => { auMsg.textContent = t; };
+auAdd.onclick = () => { const o = parseAuction(auPaste.value), got = applyAuction(o);
+  auMsgSet(got.length ? "채웠습니다: " + got.join(" · ") + " — 노란 칸에서 고칠 수 있습니다" : "읽은 정보가 없습니다 — 물건 화면 글자를 통째로 복사해 붙여 넣어 주세요"); };
+let auBusy = false;
+async function auOcr(files) {
+  if (!AI_OK) { alert(NOAI_MSG); return; }
+  if (location.protocol === "file:") { mkOcr(files); return; }   // 웹 주소로 옮겨 여는 안내는 매물 쪽과 같다
+  if (!mkTok()) { alert("캡처 읽기(AI)는 접속 키가 있는 화면에서만 됩니다. 경매 사이트 글자를 복사해 붙여 넣어 주세요."); return; }
+  if (auBusy) return; auBusy = true; auMsgSet("캡처 " + files.length + "개 올리는 중…");
+  try {
+    const enc = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok({name: f.name || "capture.png", data: String(r.result).split(",")[1]}); r.onerror = no; r.readAsDataURL(f); });
+    const hd = {"X-Sakku-Token": mkTok(), "Content-Type": "application/json"};
+    const j = await (await fetch("/api/mk-ocr", {method: "POST", headers: hd, body: JSON.stringify({mode: "auction", files: await Promise.all(files.map(enc))})})).json();
+    if (!j.ok) throw new Error(j.msg || "올리기 실패");
+    auMsgSet("경매 정보 읽는 중… (1~3분, 이 화면을 닫지 마세요)");
+    let r = null;
+    for (let i = 0; i < 100 && !(r && !r.pending); i++) { await new Promise(ok => setTimeout(ok, 4000)); r = await (await fetch("/api/mk-ocr?id=" + j.id, {headers: hd})).json(); }
+    if (!r || r.pending) throw new Error("시간이 너무 걸립니다 — 잠시 뒤 다시 해 주세요");
+    if (!r.ok || !r.info) throw new Error(r.msg || "읽지 못했습니다");
+    const got = applyAuction(r.info);
+    auMsgSet(got.length ? "AI가 채웠습니다: " + got.join(" · ") + " — 노란 칸에서 고칠 수 있습니다" : "읽은 정보가 없습니다");
+  } catch (e) { auMsgSet(""); alert("경매 정보 읽기 실패: " + e.message); }
+  auBusy = false;
+}
+auPaste.onpaste = e => { const fs = [...(e.clipboardData || {}).files || []]; if (fs.length) { e.preventDefault(); auOcr(fs); } };
+auPaste.ondragover = e => e.preventDefault();
+auPaste.ondrop = e => { const fs = [...(e.dataTransfer || {}).files || []]; if (fs.length) { e.preventDefault(); auOcr(fs); } };
+auFileB.onclick = () => auFile.click();
+auFile.onchange = () => { if (auFile.files.length) auOcr([...auFile.files]); };
+// 파일로 연 화면에서 넘어온 입력값(#s=...)을 받는다
+try { const h = location.hash.match(/^#s=(.+)$/); if (h) { S = Object.assign({}, DEF, JSON.parse(decodeURIComponent(h[1]))); localStorage.setItem(KEY, JSON.stringify(S)); history.replaceState({}, "", location.pathname + location.search); } } catch (e) {}
+function mkRender() {
+  const m = MK(), r = mkCalc(), man = v => v ? Math.round(v).toLocaleString() : "-";
+  const inp = (k, v, ph, cls) => `<input data-mk="${k}" class="${cls || ""}" value="${esc(v)}" placeholder="${ph || ""}">`;
+  mkL.innerHTML = `<table class="t"><tr><th colspan="3">① 이 물건 <small>(건축물대장·경매 개요에서)</small></th></tr>` +
+    `<tr><td class="k">전용면적 (㎡)</td><td class="v in">${inp("area", m.area || "")}</td><td class="n">${r.tp ? r.tp.toFixed(1) + "평" : "예) 54.39"}</td></tr>` +
+    `<tr><td class="k">준공 연도</td><td class="v in">${inp("year", m.year || "")}</td><td class="n">${m.year ? (new Date().getFullYear() - m.year + 1) + "년차" : "사용승인일"}</td></tr>` +
+    `<tr><td class="k">해당 층</td><td class="v in">${inp("floor", m.floor || "")}</td><td class="n">예) 4 · B1</td></tr>` +
+    `<tr><td class="k">꼭대기 층</td><td class="v in"><select data-mk="top">${["아니오", "예"].map(o => `<option ${m.top === o ? "selected" : ""}>${o}</option>`).join("")}</select></td><td class="n">비교 매물도 꼭대기 층 위주로 보세요</td></tr>` +
+    `<tr><td class="k">호가 할인율 (%)</td><td class="v as">${inp("disc", m.disc)}</td><td class="n">매물가 → 실제 거래가. 보통 5~10%</td></tr></table>`;
+  mkR.innerHTML = `<table class="t mkres"><tr><th colspan="2">추천 매도가 <small>(만원)</small></th></tr>` +
+    `<tr class="big"><td class="k"><b>추천</b></td><td class="v">${man(r.rec)}<small style="display:block;font-size:10px;font-weight:400;color:var(--sub)">${r.rec ? eok(r.rec * 1e4) : "매물·실거래를 넣으세요"}</small></td></tr>` +
+    `<tr><td class="k">범위</td><td class="v" style="font-size:13px">${r.rec ? man(r.lo) + " ~ " + man(r.hi) : "-"}</td></tr>` +
+    `<tr><td class="k">① 매물 기준<br><small style="color:var(--sub)">${r.n}/${r.all}건 · 평당 ${man(r.mp)}(㎡당 ${man(r.mp / PY)}) · 할인 ${m.disc}%</small></td><td class="v" style="font-size:13px">${man(r.askAdj)}<small style="display:block;font-size:10px;font-weight:400;color:var(--sub)">할인 전 ${man(r.ask)}</small></td></tr>` +
+    `<tr><td class="k">② 실거래 기준<br><small style="color:var(--sub)">㎡당 ${r.dm2 ? Math.round(r.dm2 * 10) / 10 : "-"}만(평당 ${r.dm2 ? man(r.dm2 * PY) : "-"}만) · 시점수정 반영</small></td><td class="v" style="font-size:13px">${man(r.deal)}</td></tr>` +
+    `<tr><td colspan="2" style="padding:6px"><button class="btn pri" id="mkUse" style="margin:0;width:100%" ${r.rec ? "" : "disabled"}>계산기 예상 매도가에 넣기</button></td></tr></table>`;
+  const rows = m.list.map((x, i) => { const why = autoOff(x, m), on = x.on === null || x.on === undefined ? !why : x.on;
+    return `<tr class="${on ? "" : "off"}"><td style="text-align:center"><input type="checkbox" data-on="${i}" ${on ? "checked" : ""} style="width:auto"></td>` +
+      `<td><input class="l" data-li="${i}" data-f="n" value="${esc(x.n)}"></td><td><input data-li="${i}" data-f="p" value="${x.p || ""}"></td><td><input data-li="${i}" data-f="a" value="${x.a || ""}"></td>` +
+      `<td><input data-li="${i}" data-f="f" value="${esc(x.f)}"></td><td><input data-li="${i}" data-f="y" value="${x.y || ""}"></td>` +
+      `<td>${x.p && x.a ? man(x.p / x.a) : "-"}</td><td>${x.p && x.a ? man(x.p / x.a / PY) : "-"}</td><td class="why">${why}${why && on ? " (넣음)" : ""}</td><td><button class="btn" data-del="${i}" style="margin:0;padding:2px 7px">✕</button></td></tr>`; }).join("");
+  mkList.innerHTML = `<table class="t" style="margin-bottom:6px"><tr><th>② 주변 매물 (네이버 부동산 등) <small>· ${m.list.length}건</small></th></tr></table>` +
+    `<textarea class="paste" id="mkPaste" placeholder="여기를 누르고 네이버 부동산 매물 캡처를 붙여 넣으세요 (Ctrl+V) — 이미지·PDF를 끌어다 놓아도 됩니다. AI가 가격·전용평·층·연식을 읽어 아래 표에 넣고 추천 금액을 다시 계산합니다(1~3분). 매물 목록 글자를 복사해 붙여 넣어도 됩니다."></textarea>` +
+    `<div style="display:flex;gap:6px;margin:6px 0 10px;flex-wrap:wrap;align-items:center"><button class="btn pri" id="mkAdd" style="margin:0">붙여 넣은 글자 읽기</button><button class="btn ai" id="mkFileB" style="margin:0">캡처 파일 고르기 (AI 클로드 사용)</button><input type="file" id="mkFile" accept="image/*,.pdf" multiple style="display:none"><button class="btn" id="mkRow" style="margin:0">빈 줄 추가</button><button class="btn" id="mkClr" style="margin:0">매물 모두 지우기</button><span class="msg" id="mkMsg">${mkBusy ? "캡처 읽는 중… (1~3분, 이 화면을 닫지 마세요)" : ""}</span></div>` +
+    `<div class="wide"><table class="c"><tr><th style="width:40px">포함</th><th>매물</th><th style="width:90px">매매가</th><th style="width:70px">전용(평)</th><th style="width:70px">층/총층</th><th style="width:70px">준공</th><th style="width:80px">평당가</th><th style="width:70px">㎡당</th><th style="width:120px">자동 제외 이유</th><th style="width:40px"></th></tr>${rows}</table></div>`;
+  mkDeal.innerHTML = `<table class="t" style="margin:14px 0 6px"><tr><th>③ 실거래 <small>(같은 건물·인근 — 감정평가서 거래사례, 국토부 실거래가)</small></th></tr></table>` +
+    `<div class="wide"><table class="c" style="min-width:620px"><tr><th>사례</th><th style="width:90px">거래가</th><th style="width:80px">전용(㎡)</th><th style="width:80px">거래 시점</th><th style="width:90px">시점수정(%)</th><th style="width:90px">㎡당(수정)</th><th style="width:90px">평당(수정)</th><th style="width:40px"></th></tr>` +
+    m.deals.map((d, i) => `<tr><td><input class="l" data-di="${i}" data-f="n" value="${esc(d.n)}"></td><td><input data-di="${i}" data-f="p" value="${d.p || ""}"></td><td><input data-di="${i}" data-f="a" value="${d.a || ""}"></td>` +
+      `<td><input data-di="${i}" data-f="d" value="${esc(d.d)}"></td><td><input data-di="${i}" data-f="adj" value="${d.adj || 0}"></td><td>${d.p && d.a ? (Math.round(d.p / d.a * (1 + (d.adj || 0) / 100) * 10) / 10).toLocaleString() : "-"}</td><td>${d.p && d.a ? man(d.p / d.a * (1 + (d.adj || 0) / 100) * PY) : "-"}</td>` +
+      `<td><button class="btn" data-ddel="${i}" style="margin:0;padding:2px 7px">✕</button></td></tr>`).join("") +
+    `</table></div><button class="btn" id="mkDealAdd">실거래 줄 추가</button>`;
+  const P = document.getElementById("p-mk");
+  P.querySelectorAll("[data-mk]").forEach(el => el.onchange = () => { const k = el.dataset.mk; m[k] = (k === "floor" || k === "top") ? el.value.trim() : num(el.value); mkSave(); });
+  P.querySelectorAll("[data-li]").forEach(el => el.onchange = () => { const x = m.list[el.dataset.li], f = el.dataset.f; x[f] = (f === "n" || f === "f") ? el.value.trim() : num(el.value); mkSave(); });
+  P.querySelectorAll("[data-di]").forEach(el => el.onchange = () => { const x = m.deals[el.dataset.di], f = el.dataset.f; x[f] = (f === "n" || f === "d") ? el.value.trim() : num(el.value); mkSave(); });
+  P.querySelectorAll("[data-on]").forEach(el => el.onchange = () => { m.list[el.dataset.on].on = el.checked; mkSave(); });
+  P.querySelectorAll("[data-del]").forEach(el => el.onclick = () => { m.list.splice(el.dataset.del, 1); mkSave(); });
+  P.querySelectorAll("[data-ddel]").forEach(el => el.onclick = () => { m.deals.splice(el.dataset.ddel, 1); mkSave(); });
+  mkAdd.onclick = () => { const got = parseNaver(mkPaste.value); if (!got.length && !got.deals.length) { say("매물을 읽지 못했습니다 — '매매 3억 5,000' 같은 글자가 들어 있어야 합니다"); return; }
+    const key = x => [x.p, x.a, x.f, x.y].join("|"), have = new Set(m.list.map(key)); let n = 0;
+    got.forEach(x => { if (!have.has(key(x))) { m.list.push(x); have.add(key(x)); n++; } });
+    const dk = d => [d.n, d.d, d.p].join("|"), dh = new Set(m.deals.map(dk)); let dn = 0;
+    got.deals.forEach(d => { if (!dh.has(dk(d))) { m.deals.push(d); dh.add(dk(d)); dn++; } });
+    mkSave(); mkMsgSet(`매물 ${n}건 넣었습니다 (같은 매물 ${got.length - n}건 뺌)` + (dn ? ` · 실거래 ${dn}건 추가(시점수정 % 확인)` : "")); };
+  mkPaste.onpaste = e => { const fs = [...(e.clipboardData || {}).files || []]; if (fs.length) { e.preventDefault(); mkOcr(fs); } };
+  mkPaste.ondragover = e => e.preventDefault();
+  mkPaste.ondrop = e => { const fs = [...(e.dataTransfer || {}).files || []]; if (fs.length) { e.preventDefault(); mkOcr(fs); } };
+  mkFileB.onclick = () => mkFile.click();
+  mkFile.onchange = () => { if (mkFile.files.length) mkOcr([...mkFile.files]); };
+  mkRow.onclick = () => { m.list.push({n: "", p: 0, a: 0, f: "", y: 0, on: null}); mkSave(); };
+  mkClr.onclick = () => { if (confirm("주변 매물을 모두 지울까요?")) { m.list = []; mkSave(); } };
+  mkDealAdd.onclick = () => { m.deals.push({n: "", p: 0, a: 0, d: "", adj: 0}); mkSave(); };
+  if (!AI_OK) mkPaste.placeholder = "네이버 부동산 매물 목록을 맨 아래까지 내린 뒤 글자를 복사해 붙여 넣고 '붙여 넣은 글자 읽기'를 누르세요 (Ctrl+A → Ctrl+C → 여기 Ctrl+V). 매물 상세창을 연 채로 복사하면 국토부 실거래가도 함께 들어갑니다.";
+  mkUse.onclick = () => { if (!r.rec) return; S.sell = r.rec * 1e4; mkSave(); say("예상 매도가에 " + eok(r.rec * 1e4) + "을 넣었습니다"); };
 }
 taxT.innerHTML = "<tr><th>과세표준 이상</th><th>미만</th><th>세율</th><th>누진공제</th></tr>" +
   BR.map(([lo, hi, r, d]) => `<tr><td>${won(lo).replace("-", "0")}</td><td>${hi ? won(hi) : "이상"}</td><td>${Math.round(r * 100)}%</td><td>${won(d).replace("-", "0")}</td></tr>`).join("");
@@ -260,7 +553,8 @@ saved.onchange = () => { const L = getList(); if (!saved.value) return;
 bSave.onclick = () => { const k = String(S.caseNo || "").trim(); if (!k) { alert("사건번호를 먼저 넣어 주세요."); return; }
   const L = getList(), had = !!L[k]; L[k] = Object.assign({}, S, {savedAt: new Date().toLocaleString("ko-KR")}); putList(L); fillSaved(k);
   say(had ? "덮어써서 저장했습니다" : "저장했습니다"); };
-bNew.onclick = () => { S = Object.assign({}, DEF, {caseNo: "", addr: ""}); localStorage.setItem(KEY, JSON.stringify(S)); saved.value = ""; render();
+// 10/20 대표님: 새 물건이면 물건별 노란 칸(감정가·최저가·입찰가·매도가)도 비운다
+bNew.onclick = () => { S = Object.assign({}, DEF, {caseNo: "", addr: "", appr: 0, min: 0, bid: 0, sell: 0}); localStorage.setItem(KEY, JSON.stringify(S)); saved.value = ""; render();
   say("새 물건 — 사건번호부터 넣어 주세요"); };
 bDel.onclick = () => { const k = saved.value; if (!k) { alert("위 목록에서 지울 물건을 먼저 고르세요."); return; }
   if (!confirm(k + " 를 저장 목록에서 지울까요?")) return; const L = getList(); delete L[k]; putList(L); fillSaved(""); say("지웠습니다"); };
@@ -285,33 +579,279 @@ const SUMH = ["사건번호", "물건지 주소", "감정가", "현재 최저가
   "대출금", "필요 현금(투자금)", "실투자금(이자 포함)", "세금 합계", "세후 순수익", "수익률", "연 환산", "저장 시각"];
 function sumRow(st) { return withS(st, () => { const c = calc(S.bid); return [S.caseNo, S.addr, m1(S.appr), m1(S.min), m1(S.bid), S.bid / S.appr, m1(S.sell), S.months, S.basis,
   S.ltv / 100, S.rate / 100, m1(c.loan), m1(c.cash), m1(c.invest), m1(c.taxAll), m1(c.net), c.roi, c.yr, st.savedAt || ""]; }); }
-function loadXLSX() { return new Promise((ok, no) => { if (window.XLSX) return ok();
-  const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload = ok; s.onerror = no; document.head.appendChild(s); }); }
+// ── 엑셀로 내려받기 (10/20 대표님: "엑셀이 너무 허접해 — 경매 낙찰 시트처럼 칸 색·정렬 다시") ──────────
+//   원본 엑셀(자료 제작팀\서울빌라_경매_낙찰가_계산시트_자산러너.xlsx)과 같은 모양: 남색 머리줄·노란 입력칸·회색 기본값·초록/분홍 결과줄,
+//   계산은 수식으로 살아 있어 엑셀에서 노란 칸을 고치면 다시 계산된다. 금액 단위: 만원.
+//   물건마다 [계산기]·[입찰가별 수익률]·[매도가 분석] 시트 + 공통 [물건 목록]·[세율표]·[사용법]
+function loadExcelJS() { return new Promise((ok, no) => { if (window.ExcelJS) return ok();
+  const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"; s.onload = ok; s.onerror = no; document.head.appendChild(s); }); }
+const XC = {navy: "FF1D3A64", gray: "FF6B7686", yel: "FFFFF2B3", def: "FFF2F4F7", grn: "FFE2F0D9", pink: "FFFCE4D6", line: "FFD0D7E2", sub: "FF6B7686", blue: "FF0000FF", red: "FFC0392B", me: "FFFFF2B3"};
+const XF = {won: '#,##0;[Red]-#,##0;"-"', won1: '#,##0.0;[Red]-#,##0.0;"-"', pct: '0.0%;[Red]-0.0%;"-"', int: "0"};
+const xFont = (o = {}) => Object.assign({name: "맑은 고딕", size: 10, color: {argb: "FF000000"}}, o);
+const xFill = c => ({type: "pattern", pattern: "solid", fgColor: {argb: c}});
+const xBox = {top: {style: "thin", color: {argb: XC.line}}, left: {style: "thin", color: {argb: XC.line}}, bottom: {style: "thin", color: {argb: XC.line}}, right: {style: "thin", color: {argb: XC.line}}};
+function xSet(ws, addr, v, o = {}) {
+  const c = ws.getCell(addr); c.value = v;
+  c.font = xFont(Object.assign({}, o.font || {}, o.b ? {bold: true} : {}, o.color ? {color: {argb: o.color}} : {}, o.sz ? {size: o.sz} : {}));
+  if (o.fill) c.fill = xFill(o.fill);
+  if (o.fmt) c.numFmt = o.fmt;
+  c.alignment = Object.assign({vertical: "middle", wrapText: !!o.wrap}, o.al ? {horizontal: o.al} : {});
+  if (o.box !== false && (o.fill || o.box)) c.border = xBox;
+  return c;
+}
+const xSheetName = (s, used) => { let nm = String(s).replace(/[\\\/\?\*\[\]:']/g, " ").replace(/\s+/g, "").slice(0, 31); while (used[nm]) nm = nm.slice(0, 28) + "_" + (++used[nm]); used[nm] = 1; return nm; };
+const xRef = (sh, a) => `'${sh}'!${a}`;
+
+// 계산기 시트 — 칸 위치는 아래 수식들이 서로 참조한다(옮기면 같이 고칠 것)
+function xCalcSheet(wb, sh, st, mkSh) {
+  const ws = wb.addWorksheet(sh, {views: [{showGridLines: false}], properties: {tabColor: {argb: XC.navy}}});
+  ws.columns = [{width: 2}, {width: 24}, {width: 16}, {width: 40}, {width: 3}, {width: 20}, {width: 14}];
+  const M = v => (v || 0) / 1e4, inp = {fill: XC.yel, color: XC.blue, al: "right", box: true}, out = {al: "right", box: true}, note = {color: XC.sub, sz: 9, box: true};
+  const H = (r, t) => { ws.mergeCells(`B${r}:D${r}`); xSet(ws, "B" + r, t, {b: true, color: "FFFFFFFF", fill: XC.navy, sz: 11}); ws.getRow(r).height = 20; };
+  const R = (r, label, val, o = {}, n = "", rowO = {}) => {
+    xSet(ws, "B" + r, label, Object.assign({box: true}, rowO.fill ? {fill: rowO.fill} : {}, rowO.b || o.bl ? {b: true} : {}));
+    xSet(ws, "C" + r, val, Object.assign({}, out, o, rowO.fill && !o.fill ? {fill: rowO.fill} : {}, rowO.b ? {b: true} : {}));
+    xSet(ws, "D" + r, n, Object.assign({}, note, rowO.fill ? {fill: rowO.fill} : {}));
+    ws.getRow(r).height = 18;
+  };
+  const F = (formula, result) => ({formula, result});
+  const c = withS(st, () => calc(S.bid)), mk = withS(st, () => mkCalc());
+  xSet(ws, "B1", "서울 빌라 경매 낙찰가 계산 시트", {b: true, color: XC.navy, sz: 18}); ws.getRow(1).height = 30;
+  xSet(ws, "B2", "자산러너 | 다가구의 모든 것  ·  노란 칸만 바꾸시면 투자금과 세후 수익이 바로 계산됩니다  ·  금액 단위: 만원", {color: XC.sub});
+  xSet(ws, "B3", "※ 노란 칸 = 입력 · 회색 칸 = 기본값(바꿔도 됨) · 흰 칸 = 자동 계산", {color: XC.red, sz: 9});
+  xSet(ws, "B5", "사건번호", {b: true, box: true}); ws.mergeCells("C5:D5"); xSet(ws, "C5", st.caseNo || "", Object.assign({}, inp, {al: "left", b: true}));
+  xSet(ws, "B6", "물건지 주소", {b: true, box: true}); ws.mergeCells("C6:D6"); xSet(ws, "C6", st.addr || "", Object.assign({}, inp, {al: "left"}));
+  H(8, "① 물건 정보  (경매 사이트·감정평가서에서 옮겨 적기)");
+  R(9, "감정가", M(st.appr), Object.assign({fmt: XF.won}, inp), "법원이 매긴 값");
+  R(10, "현재 최저가", M(st.min), Object.assign({fmt: XF.won}, inp), "이번 회차 시작 가격");
+  R(11, "최저가율", F("IFERROR(C10/C9,0)", st.appr ? st.min / st.appr : 0), {fmt: XF.pct}, "감정가 대비");
+  H(13, "② 내 계획");
+  R(14, "내 입찰가 (낙찰가)", M(st.bid), Object.assign({fmt: XF.won, b: true}, inp), "써 낼 금액", {b: true});
+  R(15, "감정가 대비", F("IFERROR(C14/C9,0)", st.appr ? st.bid / st.appr : 0), {fmt: XF.pct});
+  R(16, "예상 매도가", M(st.sell), Object.assign({fmt: XF.won, b: true}, inp), mkSh ? {formula: `"'매도가 분석' 추천 "&TEXT('${mkSh}'!I5,"#,##0")&"만 (범위 "&TEXT('${mkSh}'!I6,"#,##0")&"~"&TEXT('${mkSh}'!J6,"#,##0")&")"`, result: `'매도가 분석' 추천 ${(mk.rec || 0).toLocaleString()}만`} : "팔 때 받을 값 — 근거(실거래·호가)를 꼭 확인", {b: true});
+  R(17, "보유기간 (개월)", st.months, Object.assign({fmt: XF.int}, inp), "12개월 미만 세율 70% · 24개월 미만 60%");
+  R(18, "1세대 1주택 비과세", st.exempt, inp, "예 = 양도세 0 (조건은 '사용법' 시트)");
+  ws.getCell("C18").dataValidation = {type: "list", allowBlank: false, formulae: ['"아니오,예"']};
+  H(20, "③ 대출");
+  R(21, "대출 기준", st.basis, inp, "은행마다 다름 — 감정가 또는 낙찰가");
+  ws.getCell("C21").dataValidation = {type: "list", allowBlank: false, formulae: ['"감정가,낙찰가"']};
+  R(22, "대출 비율", st.ltv / 100, Object.assign({fmt: XF.pct}, inp), "예) 무주택 40% · 생애최초 70%");
+  R(23, "금리 (연)", st.rate / 100, Object.assign({fmt: XF.pct}, inp));
+  R(24, "대출금", F('IF(C21="낙찰가",C14,C9)*C22', M(c.loan)), {fmt: XF.won});
+  R(25, "월 이자", F("C24*C23/12", M(c.mInt)), {fmt: XF.won1});
+  R(26, "보유기간 총이자", F("C25*C17", M(c.int)), {fmt: XF.won});
+  H(28, "④ 살 때 드는 돈");
+  R(29, "취득세 (지방세 포함)", F("C14*G6", M(c.acq)), {fmt: XF.won1}, "입찰가 × 취득세율");
+  R(30, "기타 등기 비용", F("C14*G7", M(c.reg)), {fmt: XF.won1}, "입찰가 × 등기비율");
+  R(31, "법무비", F("G8", M(st.legal)), {fmt: XF.won});
+  R(32, "명도비", M(st.evict), Object.assign({fmt: XF.won}, inp), "평당 10만 원 정도");
+  R(33, "수리비", M(st.repair), Object.assign({fmt: XF.won}, inp));
+  R(34, "미납관리비", M(st.dues), Object.assign({fmt: XF.won}, inp), "매각물건명세서·관리사무소 확인");
+  R(35, "총 매입비용", F("SUM(C14,C29:C34)", M(c.totalBuy)), {fmt: XF.won}, "입찰가 + ④", {b: true});
+  R(36, "필요 현금 (투자금)", F("C35-C24", M(c.cash)), {fmt: XF.won}, "총 매입비용 − 대출금", {b: true, fill: XC.grn});
+  R(37, "실투자금 (이자 포함)", F("C36+C26", M(c.invest)), {fmt: XF.won}, "필요 현금 + 보유기간 이자", {b: true, fill: XC.grn});
+  H(39, "⑤ 팔 때 드는 돈 · 양도세");
+  R(40, "중개수수료", F("C16*G9", M(c.fee)), {fmt: XF.won1}, "매도가 × 중개수수료율");
+  R(41, "중도상환수수료", F("C24*G10", M(c.pre)), {fmt: XF.won1}, "대출금 × 수수료율 (은행 확인)");
+  R(42, "양도차익", F("C16-C14", M(c.gain)), {fmt: XF.won}, "매도가 − 입찰가");
+  R(43, "필요경비", F("C29+C30+C31+C40", M(c.exp)), {fmt: XF.won1}, "취득세·등기·법무비·중개수수료 (수리비는 빠짐)");
+  R(44, "기본공제", F("G11", M(st.basic)), {fmt: XF.won}, "1년에 1번 250만 원");
+  R(45, "과세표준", F("MAX(0,C42-C43-C44)", M(c.base)), {fmt: XF.won});
+  R(46, "적용 세율", F("IF(C17<12,0.7,IF(C17<24,0.6,LOOKUP(C45,세율표!$B$5:$B$12,세율표!$D$5:$D$12)))", c.rate), {fmt: XF.pct}, "보유기간·과세표준에 맞춰 자동");
+  R(47, "누진공제", F("IF(C17<24,0,LOOKUP(C45,세율표!$B$5:$B$12,세율표!$E$5:$E$12))", M(c.ded)), {fmt: XF.won});
+  R(48, "양도소득세", F('IF(AND(C18="예",C16<=120000,C17>=24),0,MAX(0,C45*C46-C47))', M(c.tax)), {fmt: XF.won1}, "1세대 1주택 비과세 '예'면 0");
+  R(49, "지방소득세", F("C48*G12", M(c.local)), {fmt: XF.won1}, "양도소득세 × 10%");
+  R(50, "세금 합계", F("C48+C49", M(c.taxAll)), {fmt: XF.won}, "", {b: true});
+  H(52, "⑥ 결과");
+  R(53, "세후 순수익", F("C16-C35-C26-C40-C41-C50", M(c.net)), {fmt: XF.won}, "매도가 − 매입비용 − 이자 − 팔 때 비용 − 세금", {b: true, fill: XC.pink});
+  R(54, "수익률 (실투자금 대비)", F("IFERROR(C53/C37,0)", c.roi), {fmt: XF.pct}, "", {b: true, fill: XC.pink});
+  R(55, "연 환산 수익률", F("IFERROR(C54/(C17/12),0)", c.yr), {fmt: XF.pct});
+  // 오른쪽: 기본값 · 한눈에 보기
+  ws.mergeCells("F5:G5"); xSet(ws, "F5", "기본값 (바꿔도 됨)", {b: true, color: "FFFFFFFF", fill: XC.gray, sz: 11});
+  [["취득세율", st.acqR / 100, XF.pct], ["등기 비용 비율", st.regR / 100, XF.pct], ["법무비", M(st.legal), XF.won], ["중개수수료율", st.feeR / 100, XF.pct],
+   ["중도상환수수료율", st.preR / 100, XF.pct], ["양도 기본공제", M(st.basic), XF.won], ["지방소득세율", st.localR / 100, XF.pct]]
+    .forEach(([k, v, fm], i) => { xSet(ws, "F" + (6 + i), k, {box: true}); xSet(ws, "G" + (6 + i), v, {fill: XC.def, color: XC.blue, fmt: fm, al: "right"}); });
+  ws.mergeCells("F14:G14"); xSet(ws, "F14", "한눈에 보기 (만원)", {b: true, color: "FFFFFFFF", fill: XC.navy, sz: 11});
+  [["필요 현금 (투자금)", "C36", M(c.cash), XF.won], ["실투자금 (이자 포함)", "C37", M(c.invest), XF.won], ["세후 순수익", "C53", M(c.net), XF.won],
+   ["수익률", "C54", c.roi, XF.pct], ["연 환산", "C55", c.yr, XF.pct]]
+    .forEach(([k, a, v, fm], i) => { const r = 15 + i; xSet(ws, "F" + r, k, {b: true, box: true}); xSet(ws, "G" + r, F(a, v), {b: true, color: XC.navy, fmt: fm, al: "right", box: true, sz: 11}); ws.getRow(r).height = 20; });
+  ws.mergeCells("F21:G23"); xSet(ws, "F21", "※ 참고용 계산입니다. 대출·세금은 은행·세무사 확인이 필요합니다.", {color: XC.sub, sz: 9, wrap: true});
+  xSet(ws, "B57", "자산러너 | 다가구의 모든 것  ·  유튜브 @자산러너다가구투자  ·  아는 것이 노후를 지킵니다", {color: XC.sub, sz: 9});
+  ws.pageSetup = {paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0};
+}
+
+// 입찰가별 수익률 비교 — 계산기 시트를 참조하는 수식. 최저가·내 입찰가 줄은 금액 순서 자리에
+function xCmpSheet(wb, sh, calcSh, st) {
+  const ws = wb.addWorksheet(sh, {views: [{showGridLines: false, state: "frozen", ySplit: 4}]});
+  ws.columns = [{width: 2}, {width: 16}, {width: 11}, {width: 11}, {width: 10}, {width: 11}, {width: 11}, {width: 10}, {width: 11}, {width: 10}, {width: 10}, {width: 12}, {width: 9}, {width: 10, hidden: true}];
+  const K = a => xRef(calcSh, a.replace(/([A-Z])(\d+)/, "$$$1$$$2"));
+  xSet(ws, "B1", "입찰가별 수익률 비교 — 얼마까지 써도 남을까", {b: true, color: XC.navy, sz: 16}); ws.getRow(1).height = 26;
+  xSet(ws, "B2", `'${calcSh}' 시트의 감정가·매도가·보유기간·대출 조건 그대로, 입찰가만 바꿔서 계산합니다 · 금액 단위: 만원`, {color: XC.sub, sz: 9});
+  const head = ["감정가 대비", "입찰가", "예상 매도가", "대출금", "매입 부대비용", "필요 현금", "보유 이자", "실투자금", "팔 때 비용", "세금 합계", "세후 순수익", "수익률", "과세표준"];
+  head.forEach((h, i) => xSet(ws, String.fromCharCode(66 + i) + "4", h, {b: true, color: "FFFFFFFF", fill: XC.navy, al: "center"}));
+  ws.getRow(4).height = 22;
+  const rate = b => st.appr ? ` (${(b / st.appr * 100).toFixed(1)}%)` : "";
+  const rows = [["최저가" + rate(st.min), st.min, K("C10"), "gr"]].concat([60, 65, 70, 75, 80, 85, 90, 95, 100].map(p => [p + "%", st.appr * p / 100, `${K("C9")}*${p / 100}`, ""]))
+    .concat([["내 입찰가" + rate(st.bid), st.bid, K("C14"), "me"]]).sort((a, b) => a[1] - b[1] || (a[3] === "me" ? 1 : -1));
+  rows.forEach(([label, b, fbid, cls], i) => {
+    const r = 5 + i, x = withS(st, () => calc(b)), M = v => (v || 0) / 1e4, fill = cls === "gr" ? XC.def : cls === "me" ? XC.me : null, bold = !!cls;
+    const g = (col, formula, v, fm, o = {}) => xSet(ws, col + r, {formula, result: v}, Object.assign({fmt: fm, al: "right", box: true, b: bold}, fill ? {fill} : {}, o));
+    xSet(ws, "B" + r, cls ? {formula: `"${cls === "gr" ? "최저가" : "내 입찰가"} ("&TEXT(IFERROR(C${r}/${K("C9")},0),"0.0%")&")"`, result: label} : label, Object.assign({box: true, b: bold}, fill ? {fill} : {}));
+    g("C", fbid, M(b), XF.won, {b: true});
+    g("D", K("C16"), M(st.sell), XF.won);
+    g("E", `IF(${K("C21")}="낙찰가",C${r},${K("C9")})*${K("C22")}`, M(x.loan), XF.won);
+    g("F", `C${r}*(${K("G6")}+${K("G7")})+${K("G8")}+${K("C32")}+${K("C33")}+${K("C34")}`, M(x.totalBuy - b), XF.won);
+    g("G", `C${r}+F${r}-E${r}`, M(x.cash), XF.won);
+    g("H", `E${r}*${K("C23")}/12*${K("C17")}`, M(x.int), XF.won);
+    g("I", `G${r}+H${r}`, M(x.invest), XF.won);
+    g("J", `D${r}*${K("G9")}+E${r}*${K("G10")}`, M(x.fee + x.pre), XF.won);
+    g("N", `MAX(0,D${r}-C${r}-(C${r}*(${K("G6")}+${K("G7")})+${K("G8")}+D${r}*${K("G9")})-${K("G11")})`, M(x.base), XF.won);
+    g("K", `IF(AND(${K("C18")}="예",D${r}<=120000,${K("C17")}>=24),0,MAX(0,N${r}*IF(${K("C17")}<12,0.7,IF(${K("C17")}<24,0.6,LOOKUP(N${r},세율표!$B$5:$B$12,세율표!$D$5:$D$12)))-IF(${K("C17")}<24,0,LOOKUP(N${r},세율표!$B$5:$B$12,세율표!$E$5:$E$12)))*(1+${K("G12")}))`, M(x.taxAll), XF.won);
+    g("L", `D${r}-C${r}-F${r}-H${r}-J${r}-K${r}`, M(x.net), XF.won, {b: true});
+    g("M", `IFERROR(L${r}/I${r},0)`, x.roi, XF.pct);
+    ws.getRow(r).height = 18;
+  });
+  xSet(ws, "B" + (6 + rows.length), "※ 세후 순수익이 빨간색(마이너스)이 되는 줄 바로 위가, 이 조건에서 써 볼 수 있는 상한입니다. 참고용 계산입니다.", {color: XC.sub, sz: 9});
+  ws.pageSetup = {paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0};
+}
+
+// 매도가 분석 — 화면의 매물·실거래·추천을 그대로 (평당가·㎡당은 수식)
+function xMkSheet(wb, sh, st) {
+  const m = st.mk || {list: [], deals: []}; if (!(m.list || []).length && !(m.deals || []).length) return false;
+  const ws = wb.addWorksheet(sh, {views: [{showGridLines: false}]});
+  ws.columns = [{width: 2}, {width: 7}, {width: 34}, {width: 11}, {width: 10}, {width: 10}, {width: 9}, {width: 10}, {width: 9}, {width: 16}];
+  const r0 = withS(st, () => mkCalc());
+  xSet(ws, "B1", "매도가 분석 — 주변 매물·실거래로 적정 매도가 추천", {b: true, color: XC.navy, sz: 16}); ws.getRow(1).height = 26;
+  xSet(ws, "B2", `${st.caseNo || ""}  ${st.addr || ""}  ·  금액 단위: 만원 · 면적: 전용`, {color: XC.sub, sz: 9});
+  const kv = (r, k, v, fm, o = {}) => { ws.mergeCells(`B${r}:C${r}`); xSet(ws, "B" + r, k, {box: true, b: !!o.b}); xSet(ws, "D" + r, v, Object.assign({fmt: fm, al: "right", box: true}, o)); };
+  ws.mergeCells("B4:D4"); xSet(ws, "B4", "① 이 물건", {b: true, color: "FFFFFFFF", fill: XC.navy});
+  kv(5, "전용면적 (㎡)", m.area || 0, "0.00", {fill: XC.yel, color: XC.blue}); kv(6, "전용면적 (평)", {formula: "D5/3.305785", result: (m.area || 0) / PY}, "0.0");
+  kv(7, "준공 연도", m.year || "", "0", {fill: XC.yel, color: XC.blue}); kv(8, "해당 층", m.floor || "", "@", {fill: XC.yel, color: XC.blue});
+  kv(9, "꼭대기 층", m.top || "", "@", {fill: XC.yel, color: XC.blue}); kv(10, "호가 할인율", (m.disc || 0) / 100, XF.pct, {fill: XC.def, color: XC.blue});
+  // 10/20 대표님: 엑셀에서 호가 할인율·매물 O/X·실거래를 바꾸면 추천이 다시 계산되게 — 추천 칸은 모두 수식(아래 표를 다 쓴 뒤 범위를 알고 채운다)
+  ws.getColumn(11).width = 9; ws.getColumn(11).hidden = true;   // K = 계산용 평당가(포함 'O'만)
+  ws.getCell("D10").dataValidation = undefined;
+  let r = 12;
+  ws.mergeCells(`B${r}:J${r}`); xSet(ws, "B" + r, `② 주변 매물 (${(m.list || []).length}건) — 포함 칸 O/X 를 바꾸면 추천이 다시 계산됩니다`, {b: true, color: "FFFFFFFF", fill: XC.navy}); r++;
+  ["포함", "매물", "매매가", "전용(평)", "층/총층", "준공", "평당가", "㎡당", "자동 제외 이유"].forEach((h, i) => xSet(ws, String.fromCharCode(66 + i) + r, h, {b: true, fill: XC.def, al: "center"})); r++;
+  const la = r;
+  (m.list || []).forEach(x => {
+    const why = withS(st, () => autoOff(x, MK())), on = x.on === null || x.on === undefined ? !why : x.on, gray = on ? {} : {color: "FF9AA3AF"};
+    xSet(ws, "B" + r, on ? "O" : "X", Object.assign({al: "center", box: true, fill: XC.yel}, on ? {color: XC.blue} : gray));
+    ws.getCell("B" + r).dataValidation = {type: "list", allowBlank: false, formulae: ['"O,X"']};
+    xSet(ws, "C" + r, x.n, Object.assign({box: true}, gray));
+    xSet(ws, "D" + r, x.p || 0, Object.assign({fmt: XF.won, al: "right", box: true, fill: XC.yel, color: XC.blue}, gray));   // 매매가·전용은 추천 계산에 들어가는 입력칸
+    xSet(ws, "E" + r, x.a || 0, Object.assign({fmt: "0.0", al: "right", box: true, fill: XC.yel, color: XC.blue}, gray));
+    xSet(ws, "F" + r, x.f || "", Object.assign({al: "center", box: true}, gray));
+    xSet(ws, "G" + r, x.y || "", Object.assign({fmt: "0", al: "center", box: true}, gray));
+    xSet(ws, "H" + r, {formula: `IFERROR(D${r}/E${r},0)`, result: x.a ? x.p / x.a : 0}, Object.assign({fmt: XF.won, al: "right", box: true}, gray));
+    xSet(ws, "I" + r, {formula: `IFERROR(D${r}/E${r}/3.305785,0)`, result: x.a ? x.p / x.a / PY : 0}, Object.assign({fmt: XF.won, al: "right", box: true}, gray));
+    xSet(ws, "J" + r, why + (why && on ? " (넣음)" : ""), Object.assign({sz: 9, box: true}, gray));
+    ws.getCell("K" + r).value = {formula: `IF(AND(B${r}="O",D${r}>0,E${r}>0),H${r},"")`, result: on && x.p && x.a ? x.p / x.a : ""};
+    r++;
+  });
+  const lb = r - 1, K = `K${la}:K${Math.max(la, lb)}`;
+  r++;
+  ws.mergeCells(`B${r}:J${r}`); xSet(ws, "B" + r, "③ 실거래 (같은 건물·인근 — 감정평가서 거래사례, 국토부 실거래가)", {b: true, color: "FFFFFFFF", fill: XC.navy}); r++;
+  ws.mergeCells(`B${r}:C${r}`); ["사례", null, "거래가", "전용(㎡)", "거래 시점", "시점수정", "㎡당(수정)", "평당(수정)"].forEach((h, i) => { if (h) xSet(ws, String.fromCharCode(66 + i) + r, h, {b: true, fill: XC.def, al: "center"}); }); r++;
+  const da = r, inpD = {fill: XC.yel, color: XC.blue, al: "right", box: true};
+  (m.deals || []).filter(d => d.p && d.a).forEach(d => {
+    ws.mergeCells(`B${r}:C${r}`); xSet(ws, "B" + r, d.n, {box: true});
+    xSet(ws, "D" + r, d.p, Object.assign({fmt: XF.won}, inpD)); xSet(ws, "E" + r, d.a, Object.assign({fmt: "0.00"}, inpD));
+    xSet(ws, "F" + r, d.d || "", {al: "center", box: true}); xSet(ws, "G" + r, (d.adj || 0) / 100, Object.assign({fmt: "0.00%"}, inpD));
+    const u = d.p / d.a * (1 + (d.adj || 0) / 100);
+    xSet(ws, "H" + r, {formula: `IFERROR(D${r}/E${r}*(1+G${r}),0)`, result: u}, {fmt: XF.won1, al: "right", box: true});
+    xSet(ws, "I" + r, {formula: `H${r}*3.305785`, result: u * PY}, {fmt: XF.won, al: "right", box: true});
+    r++;
+  });
+  const db = r - 1, hasD = db >= da, hasL = lb >= la, DH = `H${da}:H${db}`;
+  // 오른쪽 추천 칸 — 화면(mkCalc)과 같은 식
+  ws.mergeCells("F4:J4"); xSet(ws, "F4", "추천 매도가 (만원) — 노란 칸을 바꾸면 다시 계산", {b: true, color: "FFFFFFFF", fill: XC.navy});
+  const lab = (rr, k, o = {}) => { ws.mergeCells(`F${rr}:H${rr}`); xSet(ws, "F" + rr, k, Object.assign({box: true}, o)); };
+  const val = (a, formula, v, o = {}) => xSet(ws, a, {formula, result: v}, Object.assign({fmt: XF.won, al: "right", box: true}, o));
+  const ask = hasL ? `IFERROR(MEDIAN(${K})*D6*(1-D10),0)` : "0", deal = hasD ? `IFERROR(AVERAGE(${DH})*D5,0)` : "0";
+  lab(7, "① 매물 기준 (할인 반영)"); ws.mergeCells("I7:J7"); val("I7", ask, Math.round(r0.askAdj));
+  lab(8, "② 실거래 기준"); ws.mergeCells("I8:J8"); val("I8", deal, Math.round(r0.deal));
+  lab(5, "추천", {b: true, fill: XC.grn}); ws.mergeCells("I5:J5");
+  val("I5", `IF(COUNTIF(I7:I8,">0")=0,0,ROUND(SUMIF(I7:I8,">0")/COUNTIF(I7:I8,">0")/100,0)*100)`, r0.rec, {b: true, color: "FF1E6B3A", sz: 14, fill: XC.grn}); ws.getRow(5).height = 24;
+  lab(6, "범위 (낮게 ~ 높게)");
+  const q = p => `IFERROR(SMALL(${K},INT(COUNT(${K})*${p})+1)*D6*(1-D10),I5)`;
+  val("I6", hasL ? `IF(COUNT(${K})<4,I5,MIN(${q(0.25)},IF(I8>0,I8,I5),I5))` : "I5", Math.round(r0.lo));
+  val("J6", hasL ? `IF(COUNT(${K})<4,I5,MAX(${q(0.75)},I5))` : "I5", Math.round(r0.hi));
+  ws.mergeCells("F9:J10");
+  xSet(ws, "F9", {formula: `"① 매물 "&COUNT(${K})&"/${(m.list || []).length}건 · 평당 "&TEXT(IFERROR(MEDIAN(${K}),0),"#,##0")&"(㎡당 "&TEXT(IFERROR(MEDIAN(${K})/3.305785,0),"#,##0")&") · ② 실거래 ㎡당 "&TEXT(${hasD ? `IFERROR(AVERAGE(${DH}),0)` : 0},"#,##0.0")&"(평당 "&TEXT(${hasD ? `IFERROR(AVERAGE(${DH})*3.305785,0)` : 0},"#,##0")&")"&CHAR(10)&"추천 = ①과 ②의 평균 · ① = 매물 평당가 중간값 × 전용 평 × (1 − 호가 할인율) · ② = 실거래 ㎡당(시점수정) × 전용㎡"`,
+    result: `① 매물 ${r0.n}/${r0.all}건`}, {color: XC.sub, sz: 9, wrap: true});
+  ws.getRow(9).height = 24; ws.getRow(10).height = 24;
+  ws.pageSetup = {paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0};
+  return true;
+}
+
+function xTaxSheet(wb) {
+  const ws = wb.addWorksheet("세율표", {views: [{showGridLines: false}]});
+  ws.columns = [{width: 2}, {width: 16}, {width: 16}, {width: 10}, {width: 14}];
+  xSet(ws, "B1", "양도소득세 기본세율 (주택, 2년 이상 보유)", {b: true, color: XC.navy, sz: 14});
+  xSet(ws, "B2", "출처: 소득세법 제104조·제55조 (2023년 1월 1일 이후 양도분) · 1년 미만 70%, 2년 미만 60% · 다주택 중과 미반영 · 금액 단위: 만원", {color: XC.sub, sz: 9});
+  ["과세표준 이상", "미만", "세율", "누진공제"].forEach((h, i) => xSet(ws, String.fromCharCode(66 + i) + "4", h, {b: true, color: "FFFFFFFF", fill: XC.navy, al: "center"}));
+  BR.forEach(([lo, hi, rt, d], i) => { const r = 5 + i;
+    xSet(ws, "B" + r, lo / 1e4, {fmt: '#,##0', al: "right", box: true}); xSet(ws, "C" + r, hi ? hi / 1e4 : "이상", {fmt: '#,##0', al: "right", box: true});
+    xSet(ws, "D" + r, rt, {fmt: "0%", al: "center", box: true}); xSet(ws, "E" + r, d / 1e4, {fmt: '#,##0', al: "right", box: true}); });
+}
+
+function xUseSheet(wb) {
+  const ws = wb.addWorksheet("사용법", {views: [{showGridLines: false}]});
+  ws.columns = [{width: 2}, {width: 110}];
+  xSet(ws, "B2", "서울 빌라 경매 낙찰가 계산 시트 — 사용법", {b: true, color: XC.navy, sz: 13});
+  let r = 4;
+  document.querySelectorAll("#p-use p").forEach(p => { const h = p.classList.contains("h");
+    if (h && r > 4) r++;
+    xSet(ws, "B" + r, (h ? "" : "   ") + p.textContent.trim(), {b: h, color: h ? XC.navy : "FF1B2433", wrap: true}); r++; });
+}
+
+function xSumSheet(wb, items, names, mkNames, day) {
+  const ws = wb.addWorksheet("물건 목록", {views: [{showGridLines: false, state: "frozen", ySplit: 4}]});
+  const head = ["사건번호", "물건지 주소", "감정가", "최저가", "내 입찰가", "감정가 대비", "예상 매도가", "추천 매도가", "필요 현금", "실투자금", "세후 순수익", "수익률", "연 환산", "저장 시각"];
+  ws.columns = [{width: 2}, {width: 16}, {width: 32}].concat(head.slice(2).map((h, i) => ({width: i === 11 ? 18 : 11})));
+  xSet(ws, "B1", "서울 빌라 경매 낙찰가 계산 — 물건 목록", {b: true, color: XC.navy, sz: 16}); ws.getRow(1).height = 26;
+  xSet(ws, "B2", `${day} 내려받음 · 금액 단위: 만원 · 물건별 자세한 계산은 각 시트`, {color: XC.sub, sz: 9});
+  head.forEach((h, i) => xSet(ws, String.fromCharCode(66 + i) + "4", h, {b: true, color: "FFFFFFFF", fill: XC.navy, al: "center", wrap: true})); ws.getRow(4).height = 30;
+  items.forEach((st, i) => { const r = 5 + i, c = withS(st, () => calc(S.bid)), mk = withS(st, () => mkCalc()), M = v => (v || 0) / 1e4;
+    const vals = [[st.caseNo, "@"], [st.addr, "@"], [M(st.appr), XF.won], [M(st.min), XF.won], [M(st.bid), XF.won], [st.appr ? st.bid / st.appr : 0, XF.pct], [M(st.sell), XF.won],
+      [mk.rec || "", XF.won], [M(c.cash), XF.won], [M(c.invest), XF.won], [M(c.net), XF.won], [c.roi, XF.pct], [c.yr, XF.pct], [st.savedAt || "", "@"]];
+    // 각 물건 시트를 참조하는 수식 — 물건 시트에서 숫자를 바꾸면 목록도 바뀐다 (10/20)
+    const src = [null, "C6", "C9", "C10", "C14", "C15", "C16", null, "C36", "C37", "C53", "C54", "C55", null];
+    vals.forEach(([v, fm], j) => { const a = src[j] ? {formula: xRef(names[i], src[j]), result: v} : (j === 7 && mkNames[i] ? {formula: `'${mkNames[i]}'!I5`, result: v} : v);
+      xSet(ws, String.fromCharCode(66 + j) + r, a, {fmt: fm, al: j < 2 || j === 13 ? "left" : "right", box: true, b: j === 0 || j === 10}); });
+    ws.getCell("B" + r).value = {text: st.caseNo || "물건", hyperlink: `#'${names[i]}'!A1`}; ws.getCell("B" + r).font = xFont({bold: true, color: {argb: XC.blue}, underline: true});
+    ws.getRow(r).height = 18; });
+}
+
+// 통합 문서 만들기 — 시트 이름을 먼저 정해 서로 참조하는 수식을 건다(물건 목록 → 계산기·매도가, 계산기 → 매도가 추천)
+function xBuild(wb, items, day) {
+  const used = {}, names = items.map(st => xSheetName(String(st.caseNo || "물건") + " 계산기", used));
+  const hasMk = st => st.mk && ((st.mk.list || []).length || (st.mk.deals || []).length);
+  const cmpNames = names.map(n => xSheetName(n.replace(/계산기(_\d+)?$/, "") + " 입찰가별", used));
+  const mkNames = items.map((st, i) => hasMk(st) ? xSheetName(names[i].replace(/계산기(_\d+)?$/, "") + " 매도가", used) : null);
+  if (items.length > 1) xSumSheet(wb, items, names, mkNames, day);
+  items.forEach((st, i) => { xCalcSheet(wb, names[i], st, mkNames[i]); xCmpSheet(wb, cmpNames[i], names[i], st); if (mkNames[i]) xMkSheet(wb, mkNames[i], st); });
+  xTaxSheet(wb); xUseSheet(wb);
+  return wb;
+}
 bXl.onclick = async () => {
   const L = getList(); let items = Object.values(L);
-  if (!items.length) items = [Object.assign({}, S)];            // 저장한 게 없으면 지금 화면 한 건
-  const day = new Date().toLocaleDateString("sv-SE");   // 한국 날짜 그대로(YYYY-MM-DD)
+  if (S.caseNo) items = items.filter(x => x.caseNo !== S.caseNo).concat([Object.assign({}, S, {savedAt: (L[S.caseNo] || {}).savedAt || "지금 화면"})]);   // 지금 화면이 가장 최신
+  if (!items.length) items = [Object.assign({}, S)];
+  const day = new Date().toLocaleDateString("sv-SE");
   try {
-    await loadXLSX();
-    const wb = XLSX.utils.book_new();
-    const sum = XLSX.utils.aoa_to_sheet([["서울 빌라 경매 낙찰가 계산 — 물건 목록 (" + day + ") · 금액 단위: 만원"], [], SUMH].concat(items.map(sumRow)));
-    sum["!cols"] = SUMH.map((h, i) => ({wch: i === 1 ? 34 : i === 0 ? 18 : 14}));
-    const pctCols = [5, 9, 10, 16, 17];
-    for (let r = 3; r < 3 + items.length; r++) for (let cI = 2; cI < 18; cI++) { const a = XLSX.utils.encode_cell({r, c: cI}); if (sum[a] && typeof sum[a].v === "number") sum[a].z = pctCols.includes(cI) ? "0.0%" : (cI === 7 ? "0" : (Math.abs(sum[a].v) < 100 && sum[a].v % 1 ? "0.0" : "#,##0")); }
-    XLSX.utils.book_append_sheet(wb, sum, "물건 목록");
-    const used = {};
-    items.forEach(st => {
-      const rows = detailRows(st), ws = XLSX.utils.aoa_to_sheet(rows);
-      ws["!cols"] = [{wch: 24}, {wch: 20}];
-      rows.forEach((r, i) => { const a = "B" + (i + 1); if (ws[a] && typeof ws[a].v === "number")
-        ws[a].z = /율|대비|세율/.test(r[0]) ? "0.0%" : (r[0] === "보유기간 (개월)" ? "0" : (Math.abs(ws[a].v) < 100 && ws[a].v % 1 ? "0.0" : "#,##0")); });
-      let nm = String(st.caseNo || "물건").replace(/[\\\/\?\*\[\]:]/g, " ").slice(0, 28) || "물건";
-      while (used[nm]) nm = nm.slice(0, 26) + "_" + (used[nm]++); used[nm] = 1;
-      XLSX.utils.book_append_sheet(wb, ws, nm);
-    });
-    XLSX.writeFile(wb, "경매_낙찰가_계산_" + day + ".xlsx");
+    say("엑셀 만드는 중…");
+    await loadExcelJS();
+    const wb = new ExcelJS.Workbook(); wb.creator = "자산러너"; wb.calcProperties.fullCalcOnLoad = true;
+    xBuild(wb, items, day);
+    const buf = await wb.xlsx.writeBuffer(), a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([buf], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+    a.download = (items.length === 1 && items[0].caseNo ? String(items[0].caseNo).replace(/\s/g, "") + "_" : "") + "경매_낙찰가_계산_" + day + ".xlsx"; a.click();
     say("엑셀 파일을 내려받았습니다 (" + items.length + "건)");
   } catch (e) {                                                  // 인터넷이 막혀 엑셀 도구를 못 받으면 CSV(엑셀에서 열림)로
+    console.error(e);
     const csv = [SUMH].concat(items.map(sumRow)).map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], {type: "text/csv"}));
     a.download = "경매_낙찰가_계산_" + day + ".csv"; a.click(); say("CSV로 내려받았습니다(엑셀에서 열림)");
