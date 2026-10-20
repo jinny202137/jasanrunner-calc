@@ -489,7 +489,7 @@ function mkRender() {
     `<tr class="big"><td class="k"><b>추천</b></td><td class="v">${man(r.rec)}<small style="display:block;font-size:10px;font-weight:400;color:var(--sub)">${r.rec ? eok(r.rec * 1e4) : "매물·실거래를 넣으세요"}</small></td></tr>` +
     `<tr><td class="k">범위</td><td class="v" style="font-size:13px">${r.rec ? man(r.lo) + " ~ " + man(r.hi) : "-"}</td></tr>` +
     `<tr><td class="k">① 매물 기준<br><small style="color:var(--sub)">${r.n}/${r.all}건 · 평당 ${man(r.mp)}(㎡당 ${man(r.mp / PY)}) · 할인 ${m.disc}%</small></td><td class="v" style="font-size:13px">${man(r.askAdj)}<small style="display:block;font-size:10px;font-weight:400;color:var(--sub)">할인 전 ${man(r.ask)}</small></td></tr>` +
-    `<tr><td class="k">② 실거래 기준<br><small style="color:var(--sub)">㎡당 ${r.dm2 ? Math.round(r.dm2 * 10) / 10 : "-"}만(평당 ${r.dm2 ? man(r.dm2 * PY) : "-"}만) · 시점수정 반영</small></td><td class="v" style="font-size:13px">${man(r.deal)}</td></tr>` +
+    `<tr><td class="k">② 실거래 기준<br><small style="color:var(--sub)">${r.dm2 ? `㎡당 ${Math.round(r.dm2 * 10) / 10}만(평당 ${man(r.dm2 * PY)}만) · 시점수정 반영` : "아래 ③에 실거래를 넣으면 계산됩니다"}</small></td><td class="v" style="font-size:13px">${man(r.deal)}</td></tr>` +
     `<tr><td colspan="2" style="padding:6px"><button class="btn pri" id="mkUse" style="margin:0;width:100%" ${r.rec ? "" : "disabled"}>계산기 예상 매도가에 넣기</button></td></tr></table>`;
   const rows = m.list.map((x, i) => { const why = autoOff(x, m), on = x.on === null || x.on === undefined ? !why : x.on;
     return `<tr class="${on ? "" : "off"}"><td style="text-align:center"><input type="checkbox" data-on="${i}" ${on ? "checked" : ""} style="width:auto"></td>` +
