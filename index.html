@@ -314,6 +314,19 @@ const SEED_50496 = {area: 54.39, year: 1996, floor: "4", top: "예", disc: 8,
   deals: [{n: "같은 건물 1층 (감정평가서 거래사례1)", p: 36000, a: 50.37, d: "2025-06", adj: 6.6}]};
 const MK = () => { if (!S.mk) S.mk = /50496/.test(String(S.caseNo).replace(/\s/g, "")) ? JSON.parse(JSON.stringify(SEED_50496)) : JSON.parse(JSON.stringify(MK0)); return S.mk; };
 const isB = f => /^(B|지)/i.test(String(f || "").trim());
+// 준공을 모르는 네이버 매물 — 사쿠짱이 디스코에서 지번·건물명으로 확인한 준공 (11/3). [동, 지번 또는 건물명, 준공]
+const KNOWN_YEARS = [["가락동", "18-14", 2002], ["가락동", "15-10", 1991], ["가락동", "93-9", 1993], ["가락동", "154-30", 1991], ["가락동", "47-7", 2016],
+  ["가락동", "프라임빌", 2016], ["가락동", "27-10", 2002], ["가락동", "57-8", 2021], ["가락동", "강남팰리스", 2021], ["가락동", "스위트빌A", 2002],
+  ["가락동", "45-14", 2002], ["가락동", "삼성타운", 1988], ["가락동", "목화빌리지", 1994], ["가락동", "47-3", 1994], ["가락동", "아크로시티", 2017],
+  ["가락동", "16-5", 2017], ["송파동", "177-9", 1987], ["송파동", "호반빌라", 1987], ["송파동", "182-6", 2016]];
+function fillKnownYears(m) {
+  let n = 0;
+  m.list.forEach(x => { if (x.y) return; const nm = String(x.n || "");
+    const k = KNOWN_YEARS.find(([d, key]) => nm.includes(d) && (/^\d/.test(key) ? nm.includes("(" + key + ")") || nm.includes("(" + key + ",") : nm.includes(key)));
+    if (k) { x.y = k[2]; n++; } });
+  if (n) localStorage.setItem(KEY, JSON.stringify(S));
+  return n;
+}
 // 처음부터 뺄 매물 — 이유를 함께 보여 준다 (대표님이 체크로 되살릴 수 있다)
 function autoOff(x, m) {
   if (isB(x.f)) return "지하층";
@@ -491,6 +504,7 @@ auFile.onchange = () => { if (auFile.files.length) auOcr([...auFile.files]); };
 // 파일로 연 화면에서 넘어온 입력값(#s=...)을 받는다
 try { const h = location.hash.match(/^#s=(.+)$/); if (h) { S = Object.assign({}, DEF, JSON.parse(decodeURIComponent(h[1]))); localStorage.setItem(KEY, JSON.stringify(S)); history.replaceState({}, "", location.pathname + location.search); } } catch (e) {}
 function mkRender() {
+  fillKnownYears(MK());
   const m = MK(), r = mkCalc(), man = v => v ? Math.round(v).toLocaleString() : "-";
   const inp = (k, v, ph, cls) => `<input data-mk="${k}" class="${cls || ""}" value="${esc(v)}" placeholder="${ph || ""}">`;
   mkL.innerHTML = `<table class="t"><tr><th colspan="3">① 이 물건 <small>(건축물대장·경매 개요에서)</small></th></tr>` +
