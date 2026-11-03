@@ -123,6 +123,14 @@ textarea.paste{width:100%;height:90px;border:1px dashed #9aa6b8;border-radius:6p
     <div class="sub" style="margin-top:6px">※ 매물 가격은 파는 사람이 부른 값(호가)이라 실제 거래가보다 높습니다 — '호가 할인율'로 낮춰 봅니다. 같은 건물·인근 실거래(감정평가서의 거래사례 등)가 있으면 함께 넣으세요. 참고용 계산입니다.</div>
   </section>
 
+  <!-- 시트 1-3: 실거래가 분석 (11/3 대표님: 디스코 지도에 뜬 건물들의 매매 실거래 이력을 한 번에 모아 엑셀로 — 캡처 하나하나는 안 된다) -->
+  <section class="pane" id="p-rt">
+    <h1 style="font-size:18px">실거래가 분석 — 디스코 지도 주변 건물 매매 실거래 이력</h1>
+    <div class="sub">① 아래 <b>'사쿠짱 디스코 수집'</b> 버튼을 크롬 즐겨찾기 막대로 끌어다 놓습니다(처음 한 번만). ② 디스코(disco.re) 지도를 보고 싶은 동네에 맞춥니다. ③ 즐겨찾기의 버튼을 누르면 지도에 뜬 건물을 하나씩 열어 <b>2022년 이후 매매</b>를 모읍니다(건물 30곳에 5~8분, 그동안 디스코 화면을 건드리지 마세요). ④ 끝나면 위에 뜨는 [복사] → 아래 칸에 붙여 넣기.</div>
+    <div id="rtTop"></div>
+    <div id="rtOut"></div>
+  </section>
+
   <!-- 시트 2: 입찰가별 수익률 비교 -->
   <section class="pane" id="p-cmp">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap">
@@ -182,7 +190,7 @@ textarea.paste{width:100%;height:90px;border:1px dashed #9aa6b8;border-radius:6p
 </div>
 
 <nav class="tabs">
-  <button class="on" data-p="p-calc">계산기</button><button data-p="p-mk">매도가 분석</button><button data-p="p-cmp">입찰가별 수익률 비교</button><button data-p="p-tax">세율표</button><button data-p="p-use">사용법</button>
+  <button class="on" data-p="p-calc">계산기</button><button data-p="p-mk">매도가 분석</button><button data-p="p-rt">실거래가 분석</button><button data-p="p-cmp">입찰가별 수익률 비교</button><button data-p="p-tax">세율표</button><button data-p="p-use">사용법</button>
 </nav>
 
 <script>
@@ -293,6 +301,7 @@ function render() {
   const rb = left.querySelector(".rec");
   if (rb) rb.onclick = () => { S.sell = Number(rb.dataset.rec) * 1e4; localStorage.setItem(KEY, JSON.stringify(S)); render(); say("추천 매도가를 넣었습니다 — 고쳐 적으셔도 됩니다"); };
   mkRender();
+  rtRender();
 }
 
 // ── 매도가 분석 (10/20 대표님) ─────────────────────────────────────
@@ -317,7 +326,7 @@ const DEALS_64687 = [["공감지음27 6층 (가락동 27-2, 2022 준공)", 72000
   ["토브마스터클래스 5층 (가락동 50-7, 2018 준공)", 79800, 59.5, "2026-04"], ["토브마스터클래스 2층 (가락동 50-7, 2018 준공)", 75000, 59.95, "2025-07"],
   ["토브마스터클래스 4층 (가락동 50-7, 2018 준공)", 75000, 59.5, "2025-07"], ["윤앤빌프리미엄I 5층 (가락동 159-8, 2019 준공)", 49000, 48.43, "2024-11"],
   ["윤앤빌프리미엄I 5층 (가락동 159-8, 2019 준공)", 29000, 29.98, "2024-07"], ["윤앤빌프리미엄I 4층 (가락동 159-8, 2019 준공)", 27000, 29.98, "2024-02"]]
-  .map(([n, p, a, d]) => ({n: n + " · 디스코", p, a, d, adj: 0}));
+  .map(([n, p, a, d]) => ({n: n + " · 디스코", p, a, d, adj: 0, src: "rt"}));
 const MK = () => { if (!S.mk) S.mk = /50496/.test(String(S.caseNo).replace(/\s/g, "")) ? JSON.parse(JSON.stringify(SEED_50496)) : JSON.parse(JSON.stringify(MK0));
   if (/64687/.test(String(S.caseNo).replace(/\s/g, "")) && !S.mk.seed64687 && !(S.mk.deals || []).length) { S.mk.deals = JSON.parse(JSON.stringify(DEALS_64687)); S.mk.seed64687 = 1; localStorage.setItem(KEY, JSON.stringify(S)); }
   return S.mk; };
@@ -622,6 +631,143 @@ const SUMH = ["사건번호", "물건지 주소", "감정가", "현재 최저가
   "대출금", "필요 현금(투자금)", "실투자금(이자 포함)", "세금 합계", "세후 순수익", "수익률", "연 환산", "저장 시각"];
 function sumRow(st) { return withS(st, () => { const c = calc(S.bid); return [S.caseNo, S.addr, m1(S.appr), m1(S.min), m1(S.bid), S.bid / S.appr, m1(S.sell), S.months, S.basis,
   S.ltv / 100, S.rate / 100, m1(c.loan), m1(c.cash), m1(c.invest), m1(c.taxAll), m1(c.net), c.roi, c.yr, st.savedAt || ""]; }); }
+// ── 실거래가 분석 (11/3 대표님) ─────────────────────────────────────
+//   디스코 지도에서 즐겨찾기 버튼(discoCollect)을 누르면: 지도 표시(월세 제외)를 하나씩 열고 → 평형마다 → '더보기'를 2022년 거래까지 펼쳐
+//   매매 이력을 모아 "SAKKU_DISCO:{json}" 글자로 복사해 준다. 이 탭에 붙여 넣으면 표 + 엑셀.
+//   디스코 화면 구조(11/3 확인): 표시 .map-marker-div · 주소 .above_detail-panel · 거래표 .trp-bottom-container 부모 · 더보기 .trp-button-next
+//   · 평형 선택 .to-area-field(같은 클래스가 지도 표시에도 있어 위치로 고른다) → .ddiv_real_price_btn
+function discoCollect() {
+  if (!/disco\.re/.test(location.hostname)) { alert("디스코(disco.re) 지도 화면에서 눌러 주세요."); return; }
+  if (window.__sakkuRun) { alert("이미 모으는 중입니다."); return; } window.__sakkuRun = 1;
+  const sleep = ms => new Promise(r => setTimeout(r, ms)), CUT = 22;
+  const bar = document.createElement("div"); bar.style.cssText = "position:fixed;z-index:2147483647;left:50%;top:12px;transform:translateX(-50%);background:#1d3a64;color:#fff;padding:10px 16px;border-radius:8px;font:14px sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.3)";
+  document.body.appendChild(bar); const say = t => bar.textContent = "사쿠짱 수집 · " + t;
+  const box = () => { const n = document.querySelector(".trp-bottom-container"); return n ? n.parentElement : null; };
+  const listText = () => { const b = box(); if (!b) return ""; const c = b.innerText, a = c.indexOf("최근 실거래가"), z = c.indexOf("우리동네"); return c.slice(a < 0 ? 0 : a, z > 0 ? z : undefined); };
+  const addr = () => { const h = document.querySelector(".above_detail-panel"); return h ? h.innerText.trim().split("\n").map(x => x.trim()).filter(Boolean).slice(0, 2).join(" / ") : ""; };
+  const head = () => { const d = [...document.querySelectorAll("div")].filter(x => /\n준공 \d{4}년/.test(x.innerText || "") && (x.innerText || "").length < 150).sort((a, c) => a.innerText.length - c.innerText.length)[0]; return d ? d.innerText.replace(/\n/g, " / ") : ""; };
+  const field = () => [...document.querySelectorAll(".to-area-field")].find(e => { const r = e.getBoundingClientRect(); return r.x > 150 && r.x < 380 && r.y > 250 && r.y < 550; });
+  const settle = async () => { let prev = ""; for (let k = 0; k < 10; k++) { await sleep(600); const t = listText(); if (t && t === prev) return; prev = t; } };
+  const expand = async () => { for (let k = 0; k < 10; k++) { const nx = document.querySelector(".trp-button-next"); if (!nx) break; const m = (nx.innerText || "").match(/\((\d+)\/(\d+)\)/); if (!m || m[1] === m[2]) break;
+    const yrs = [...listText().matchAll(/'(\d\d)\.\d\d\.\d\d/g)].map(x => +x[1]); if (yrs.length && Math.min(...yrs) < CUT) break; nx.click(); await settle(); } };
+  (async () => {
+    const W = innerWidth, H = innerHeight;
+    const markers = [...document.querySelectorAll(".map-marker-div")].map(e => ({e, txt: e.innerText.replace(/\s+/g, " ").trim(), r: e.getBoundingClientRect()}))
+      .filter(m => !m.txt.startsWith("월") && m.r.x > 400 && m.r.x < W && m.r.y > 0 && m.r.y < H);
+    const out = []; let last = "";
+    for (let i = 0; i < markers.length; i++) {
+      const m = markers[i]; say(`${i + 1} / ${markers.length} 건물 · ${m.txt} (디스코 화면을 건드리지 마세요)`);
+      try {
+        m.e.click(); for (let k = 0; k < 16; k++) { await sleep(400); if (addr() && addr() !== last) break; }
+        await settle(); last = addr();
+        const o = {marker: m.txt, addr: addr(), head: head(), types: []}, fld = field(); let n = 1;
+        if (fld) { fld.click(); await sleep(900); n = document.querySelectorAll(".ddiv_real_price_btn").length || 1; }
+        for (let t = 0; t < n; t++) {
+          let label = "단일";
+          if (fld) { if (t > 0) { const f2 = field(); if (f2) { f2.click(); await sleep(900); } } const bs = document.querySelectorAll(".ddiv_real_price_btn"); if (bs[t]) { label = bs[t].innerText.replace(/\s+/g, " "); bs[t].click(); await settle(); } }
+          await expand();
+          const rows = listText().split("\n").filter(l => /^'\d\d\./.test(l)).filter(l => +l.slice(1, 3) >= CUT).map(l => l.replace(/\t등기$/, ""));
+          if (rows.length) o.types.push({type: label, rows});
+        }
+        out.push(o);
+      } catch (err) { out.push({marker: m.txt, err: String(err)}); }
+    }
+    const txt = "SAKKU_DISCO:" + JSON.stringify({v: 1, at: new Date().toLocaleString("ko-KR"), items: out});
+    bar.innerHTML = `사쿠짱 수집 끝 · 건물 ${out.length}곳 <button style="margin-left:10px;padding:4px 12px;font-weight:700;cursor:pointer">복사</button> <button style="margin-left:4px;padding:4px 8px;cursor:pointer">닫기</button>`;
+    const [cp, cl] = bar.querySelectorAll("button");
+    cp.onclick = async () => { try { await navigator.clipboard.writeText(txt); cp.textContent = "복사됨 — 계산 시트 '실거래가 분석' 칸에 붙여 넣으세요"; }
+      catch (e) { const ta = document.createElement("textarea"); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); cp.textContent = "복사됨"; } };
+    cl.onclick = () => { bar.remove(); window.__sakkuRun = 0; };
+  })();
+}
+const DISCO_BM = "javascript:" + encodeURIComponent("(" + discoCollect.toString() + ")()");
+const eokMan = s => { s = String(s).replace(/,/g, ""); const m = s.match(/(?:([\d.]+)억)?\s*(?:([\d.]+)만?)?/); return Math.round(Number(m[1] || 0) * 10000 + Number(m[2] || 0)); };
+// 붙여 넣은 수집 글자 → 건물별 거래
+function rtRows(rt) {
+  return (rt.items || []).map((it, i) => {
+    const h = it.head || "", nm = (h.split(" / ")[0] || "").split(" · "), ym = h.match(/준공 (\d{4})년 · (.+)$/);
+    const ad = String(it.addr || "").split(" / ").map(x => x.replace(/^서울특별시\s*/, ""));
+    const b = {no: i + 1, name: nm[0] || "", zone: nm[1] || "", year: ym ? +ym[1] : 0, units: ym ? ym[2] : "", jibun: ad[0] || "", road: ad[1] || "", marker: it.marker || "", trades: []};
+    (it.types || []).forEach(tp => { const m = String(tp.type).match(/([\d.,]+)m² 전용 ([\d.,]+)m² (\d+)/);
+      (tp.rows || []).forEach(r => { const p = r.split("\t"); b.trades.push({date: "20" + p[0].replace("'", ""), price: eokMan(p[1]), floorHo: p[2] || "",
+        sup: m ? Number(m[1].replace(/,/g, "")) : 0, ex: m ? Number(m[2].replace(/,/g, "")) : 0, cnt: m ? +m[3] : 0}); }); });
+    return b;
+  });
+}
+// 의미 있는 실거래 = 이 물건 준공 −5년 이후 건물 · 전용면적이 이 물건의 0.6~1.6배 · 지하 아님 (매도가 분석 매물 기준과 같다)
+const rtUse = (b, t, me, ta) => !!(t.ex && b.year && (!me || b.year >= me - 5) && (!ta || (t.ex >= ta * 0.6 && t.ex <= ta * 1.6)) && !/^-|지하|B\d/.test(t.floorHo));
+// 11/3 대표님: 실거래가 분석(자료) → 의미 있는 거래만 매도가 분석 ③ 실거래로. 손으로 넣은 줄은 두고, 디스코 줄만 새로 바꾼다(시점수정 %는 같은 거래면 유지)
+function rtSync() {
+  const m = MK(), me = m.year || 0, ta = m.area || 0, B = rtRows(S.rt || {}), keep = {};
+  m.deals.filter(d => d.src === "rt" || / · 디스코$/.test(d.n)).forEach(d => keep[[d.n, d.d, d.p].join("|")] = d.adj || 0);
+  m.deals = m.deals.filter(d => !(d.src === "rt" || / · 디스코$/.test(d.n)));
+  let n = 0; const seen = new Set();
+  B.forEach(b => b.trades.forEach(t => { if (!rtUse(b, t, me, ta)) return;
+    const sk = [b.jibun, t.date, t.price, t.floorHo].join("|"); if (seen.has(sk)) return; seen.add(sk);   // 디스코에 같은 거래가 두 줄로 뜨는 경우
+    const d = {n: `${b.name} ${t.floorHo.split(" ")[0]} (${b.jibun.replace(/^.*?구\s*/, "")}, ${b.year} 준공) · 디스코`, p: t.price, a: t.ex, d: t.date.slice(0, 7).replace(".", "-"), adj: 0, src: "rt"};
+    d.adj = keep[[d.n, d.d, d.p].join("|")] || 0; m.deals.push(d); n++; }));
+  return n;
+}
+function rtRender() {
+  const rt = S.rt || {}, B = rtRows(rt), me = MK().year || 0, tp = MK().area || 0, man = v => v ? Math.round(v).toLocaleString() : "-";
+  rtTop.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0">` +
+    `<a id="rtBm" class="btn pri" style="margin:0;text-decoration:none">📍 사쿠짱 디스코 수집</a>` +
+    `<span class="sub" style="margin:0">← 이 버튼을 즐겨찾기 막대로 끌어다 놓기 (막대가 안 보이면 Ctrl+Shift+B)</span></div>` +
+    `<textarea class="paste" id="rtPaste" placeholder="디스코에서 수집이 끝나면 화면 위 [복사]를 누르고 여기에 붙여 넣으세요 (Ctrl+V)"></textarea>` +
+    `<div style="display:flex;gap:6px;margin:6px 0 10px;flex-wrap:wrap;align-items:center"><button class="btn pri" id="rtXls" style="margin:0" ${B.length ? "" : "disabled"}>엑셀로 내려받기</button><button class="btn" id="rtClr" style="margin:0">비우기</button>` +
+    `<span class="msg" id="rtMsg">${B.length ? `건물 ${B.length}곳 · 매매 ${B.reduce((a, b) => a + b.trades.length, 0)}건 (2022년~) · 수집 ${esc(rt.at || "")}` : ""}</span></div>`;
+  const bm = document.getElementById("rtBm"); bm.href = DISCO_BM; bm.onclick = e => { e.preventDefault(); alert("이 버튼은 누르는 게 아니라 크롬 즐겨찾기 막대로 끌어다 놓는 버튼입니다. 디스코 지도 화면에서 즐겨찾기 막대의 버튼을 누르세요."); };
+  const th = "<tr><th>No</th><th>지도 표시</th><th>건물명</th><th>지번</th><th>준공</th><th>준공 차이</th><th>거래일</th><th>매매가</th><th>층·호</th><th>공급㎡</th><th>전용㎡</th><th>전용㎡당</th><th>전용평당</th><th>면적 보정가</th><th>매도가 반영</th></tr>";
+  const rows = B.flatMap(b => {
+    const off = b.year && me && b.year < me - 5 ? ' class="off"' : "", dy = b.year && me ? (b.year - me > 0 ? "+" : "") + (b.year - me) + "년" : "-";
+    if (!b.trades.length) return [`<tr class="off"><td>${b.no}</td><td>${esc(b.marker)}</td><td>${esc(b.name)}</td><td>${esc(b.jibun)}</td><td>${b.year || "-"}</td><td>${dy}</td><td colspan="9">2022년 이후 매매 없음</td></tr>`];
+    return b.trades.map((t, k) => `<tr${off}><td>${k ? "" : b.no}</td><td>${k ? "" : esc(b.marker)}</td><td>${k ? "" : esc(b.name)}</td><td>${k ? "" : esc(b.jibun)}</td><td>${b.year || "-"}</td><td>${dy}</td>` +
+      `<td>${t.date}</td><td>${man(t.price)}</td><td>${esc(t.floorHo)}</td><td>${t.sup || "-"}</td><td>${t.ex || "-"}</td>` +
+      `<td>${t.ex ? man(t.price / t.ex) : "-"}</td><td>${t.ex ? man(t.price / t.ex * PY) : "-"}</td><td><b>${t.ex && tp ? man(t.price / t.ex * tp) : "-"}</b></td><td style="text-align:center">${rtUse(b, t, me, tp) ? "✔" : ""}</td></tr>`);
+  }).join("");
+  rtOut.innerHTML = B.length ? `<div class="sub">금액 단위: 만원 · 회색 줄 = 이 물건 준공(${me || "?"})보다 5년 넘게 오래된 건물 · 면적 보정가 = 전용㎡당 × 이 물건 전용 ${tp || "?"}㎡ · 단일면적 건물은 디스코에 면적이 안 나와 ㎡당이 비어 있습니다 · <b>✔ = '매도가 분석' ③ 실거래로 넘어간 거래</b>(이 물건 준공 −5년 이후 · 전용 0.6~1.6배 · 지하 제외)</div>` +
+    `<div class="wide"><table class="c" style="min-width:1100px">${th}${rows}</table></div>` : "";
+  rtPaste.onpaste = () => setTimeout(() => {
+    const v = rtPaste.value.trim(), i = v.indexOf("SAKKU_DISCO:");
+    if (i < 0) { rtMsg.textContent = "수집 글자가 아닙니다 — 디스코에서 '사쿠짱 디스코 수집' 버튼으로 모은 뒤 [복사]한 것을 붙여 넣어 주세요"; return; }
+    try { const j = JSON.parse(v.slice(i + 12)); S.rt = {at: j.at, items: j.items}; const n = rtSync(); localStorage.setItem(KEY, JSON.stringify(S)); render();
+      rtMsg.textContent += ` · 의미 있는 실거래 ${n}건을 '매도가 분석' ③ 실거래에 넣었습니다`; }
+    catch (e) { rtMsg.textContent = "글자가 잘렸습니다 — [복사]를 다시 눌러 붙여 넣어 주세요"; }
+  }, 0);
+  rtClr.onclick = () => { if (confirm("실거래가 분석 자료를 비울까요?")) { delete S.rt; localStorage.setItem(KEY, JSON.stringify(S)); render(); } };
+  rtXls.onclick = () => rtExcel(B);
+}
+async function rtExcel(B) {
+  try {
+    await loadExcelJS();
+    const wb = new ExcelJS.Workbook(); wb.creator = "자산러너"; const me = MK().year || 0, tp = MK().area || 0;
+    const hd = (ws, r, names, widths) => { names.forEach((n, j) => xSet(ws, String.fromCharCode(65 + j) + r, n, {b: true, color: "FFFFFFFF", fill: "FFB0524F", al: "center", wrap: true})); widths.forEach((w, j) => ws.getColumn(j + 1).width = w); };
+    const a = wb.addWorksheet("건물 목록", {views: [{state: "frozen", ySplit: 4, xSplit: 2}]});
+    xSet(a, "A1", `${S.addr || ""} 주변 — 디스코 지도 표시 건물 (월세 제외)`, {b: true, sz: 13});
+    xSet(a, "A2", `디스코 수집 ${(S.rt || {}).at || ""} · 지도 표시 = 그 건물 최근 실거래가 · 이 물건 준공 ${me || "?"} · 전용 ${tp || "?"}㎡`, {color: XC.sub});
+    hd(a, 4, ["No", "지도 표시", "건물명", "지번", "도로명", "용도지역", "준공", "준공 차이", "세대·층", "2022년 이후 매매 건수"], [5, 16, 20, 20, 24, 14, 7, 9, 18, 10]);
+    B.forEach((b, i) => { const old = b.year && me && b.year < me - 5;
+      [b.no, b.marker, b.name, b.jibun, b.road, b.zone, b.year || "", b.year && me ? b.year - me : "", b.units, b.trades.length]
+        .forEach((v, j) => xSet(a, String.fromCharCode(65 + j) + (5 + i), v, Object.assign({box: true}, old ? {color: "FF9AA3AF"} : {}))); });
+    const t = wb.addWorksheet("매매 실거래 이력", {views: [{state: "frozen", ySplit: 3, xSplit: 2}]});
+    xSet(t, "A1", "매매 실거래 이력 (2022년~현재) — 거래 1건당 1줄, 평형(공급/전용)별", {b: true, sz: 13});
+    hd(t, 3, ["No", "건물명", "지번", "준공", "준공 차이", "거래일", "매매가(만원)", "층·호", "공급㎡", "전용㎡", "전용㎡당(만원)", "전용평당(만원)", "면적 보정가(만원)", "평형 전체 거래수"], [5, 20, 18, 7, 9, 11, 12, 16, 8, 9, 12, 12, 14, 10]);
+    let r = 4;
+    B.forEach(b => b.trades.forEach(x => { const g = b.year && me && b.year < me - 5 ? {color: "FF9AA3AF"} : {};
+      [b.no, b.name, b.jibun, b.year || "", b.year && me ? b.year - me : "", x.date, x.price, x.floorHo, x.sup || null, x.ex || null]
+        .forEach((v, j) => xSet(t, String.fromCharCode(65 + j) + r, v, Object.assign({box: true}, g, j === 6 ? {fmt: XF.won} : {})));
+      xSet(t, "K" + r, {formula: `IFERROR(G${r}/J${r},"")`}, Object.assign({box: true, fmt: XF.won}, g));
+      xSet(t, "L" + r, {formula: `IFERROR(G${r}/J${r}*3.305785,"")`}, Object.assign({box: true, fmt: XF.won}, g));
+      xSet(t, "M" + r, tp ? {formula: `IFERROR(G${r}/J${r}*${tp},"")`} : "", Object.assign({box: true, fmt: XF.won, b: true}, g));
+      xSet(t, "N" + r, x.cnt || null, Object.assign({box: true}, g)); r++; }));
+    t.autoFilter = {from: "A3", to: "N" + Math.max(3, r - 1)};
+    xSet(t, "A" + (r + 1), "※ 회색 = 이 물건보다 준공 5년 넘게 오래됨 · 단일면적 건물은 디스코에 면적이 없어 ㎡당 빈칸 · 같은 날 같은 금액 2줄은 디스코 원본 그대로", {color: XC.sub});
+    const buf = await wb.xlsx.writeBuffer(), el = document.createElement("a");
+    el.href = URL.createObjectURL(new Blob([buf], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+    el.download = (String(S.caseNo || "").replace(/\s/g, "") || "주변") + "_실거래가분석_" + new Date().toLocaleDateString("sv-SE") + ".xlsx"; el.click();
+  } catch (e) { alert("엑셀 만들기 실패: " + e.message); }
+}
+
 // ── 엑셀로 내려받기 (10/20 대표님: "엑셀이 너무 허접해 — 경매 낙찰 시트처럼 칸 색·정렬 다시") ──────────
 //   원본 엑셀(자료 제작팀\서울빌라_경매_낙찰가_계산시트_자산러너.xlsx)과 같은 모양: 남색 머리줄·노란 입력칸·회색 기본값·초록/분홍 결과줄,
 //   계산은 수식으로 살아 있어 엑셀에서 노란 칸을 고치면 다시 계산된다. 금액 단위: 만원.
