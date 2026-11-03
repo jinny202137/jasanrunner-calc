@@ -126,7 +126,7 @@ textarea.paste{width:100%;height:90px;border:1px dashed #9aa6b8;border-radius:6p
   <!-- 시트 1-3: 실거래가 분석 (11/3 대표님: 디스코 지도에 뜬 건물들의 매매 실거래 이력을 한 번에 모아 엑셀로 — 캡처 하나하나는 안 된다) -->
   <section class="pane" id="p-rt">
     <h1 style="font-size:18px">실거래가 분석 — 디스코 지도 주변 건물 매매 실거래 이력</h1>
-    <div class="sub">① 아래 <b>'사쿠짱 디스코 수집'</b> 버튼을 크롬 즐겨찾기 막대로 끌어다 놓습니다(처음 한 번만). ② 디스코(disco.re) 지도를 보고 싶은 동네에 맞춥니다. ③ 즐겨찾기의 버튼을 누르면 지도에 뜬 건물을 하나씩 열어 <b>2022년 이후 매매</b>를 모읍니다(건물 30곳에 5~8분, 그동안 디스코 화면을 건드리지 마세요). ④ 끝나면 위에 뜨는 [복사] → 아래 칸에 붙여 넣기.</div>
+    <div class="sub">① 아래 <b>'사쿠짱 디스코 수집'</b> 버튼을 크롬 즐겨찾기 막대로 끌어다 놓습니다(처음 한 번만). ② 디스코(disco.re) 지도를 보고 싶은 동네에 맞춥니다. ③ 즐겨찾기의 버튼을 누르면 지도에 뜬 건물을 하나씩 열어 <b>2022년 이후 매매</b>를 모읍니다(건물 30곳에 5~8분, 그동안 디스코 화면을 건드리지 마세요). ④ 끝나면 <b>저절로 이 화면으로 돌아와</b> 표가 채워지고, 의미 있는 거래는 '매도가 분석' ③ 실거래에 들어갑니다(복사·붙여넣기 필요 없음).</div>
     <div id="rtTop"></div>
     <div id="rtOut"></div>
   </section>
@@ -673,6 +673,8 @@ function discoCollect() {
       } catch (err) { out.push({marker: m.txt, err: String(err)}); }
     }
     const txt = "SAKKU_DISCO:" + JSON.stringify({v: 1, at: new Date().toLocaleString("ko-KR"), items: out});
+    say(`끝 · 건물 ${out.length}곳 — 계산 시트로 넘어갑니다`); await sleep(1200);
+    try { location.href = "__BACK__#rt=" + encodeURIComponent(txt.slice(12)); return; } catch (e) {}   // 이 버튼을 끌어 온 계산 시트 주소
     bar.innerHTML = `사쿠짱 수집 끝 · 건물 ${out.length}곳 <button style="margin-left:10px;padding:4px 12px;font-weight:700;cursor:pointer">복사</button> <button style="margin-left:4px;padding:4px 8px;cursor:pointer">닫기</button>`;
     const [cp, cl] = bar.querySelectorAll("button");
     cp.onclick = async () => { try { await navigator.clipboard.writeText(txt); cp.textContent = "복사됨 — 계산 시트 '실거래가 분석' 칸에 붙여 넣으세요"; }
@@ -680,7 +682,7 @@ function discoCollect() {
     cl.onclick = () => { bar.remove(); window.__sakkuRun = 0; };
   })();
 }
-const DISCO_BM = "javascript:" + encodeURIComponent("(" + discoCollect.toString() + ")()");
+const DISCO_BM = "javascript:" + encodeURIComponent("(" + discoCollect.toString().replace("__BACK__", location.origin + location.pathname) + ")()");
 const eokMan = s => { s = String(s).replace(/,/g, ""); const m = s.match(/(?:([\d.]+)억)?\s*(?:([\d.]+)만?)?/); return Math.round(Number(m[1] || 0) * 10000 + Number(m[2] || 0)); };
 // 붙여 넣은 수집 글자 → 건물별 거래
 function rtRows(rt) {
@@ -713,7 +715,7 @@ function rtRender() {
   rtTop.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0">` +
     `<a id="rtBm" class="btn pri" style="margin:0;text-decoration:none">📍 사쿠짱 디스코 수집</a>` +
     `<span class="sub" style="margin:0">← 이 버튼을 즐겨찾기 막대로 끌어다 놓기 (막대가 안 보이면 Ctrl+Shift+B)</span></div>` +
-    `<textarea class="paste" id="rtPaste" placeholder="디스코에서 수집이 끝나면 화면 위 [복사]를 누르고 여기에 붙여 넣으세요 (Ctrl+V)"></textarea>` +
+    `<textarea class="paste" id="rtPaste" placeholder="보통은 수집이 끝나면 저절로 채워집니다. 안 되면 디스코 화면 위 [복사]를 누르고 여기에 붙여 넣으세요 (Ctrl+V)"></textarea>` +
     `<div style="display:flex;gap:6px;margin:6px 0 10px;flex-wrap:wrap;align-items:center"><button class="btn pri" id="rtXls" style="margin:0" ${B.length ? "" : "disabled"}>엑셀로 내려받기</button><button class="btn" id="rtClr" style="margin:0">비우기</button>` +
     `<span class="msg" id="rtMsg">${B.length ? `건물 ${B.length}곳 · 매매 ${B.reduce((a, b) => a + b.trades.length, 0)}건 (2022년~) · 수집 ${esc(rt.at || "")}` : ""}</span></div>`;
   const bm = document.getElementById("rtBm"); bm.href = DISCO_BM; bm.onclick = e => { e.preventDefault(); alert("이 버튼은 누르는 게 아니라 크롬 즐겨찾기 막대로 끌어다 놓는 버튼입니다. 디스코 지도 화면에서 즐겨찾기 막대의 버튼을 누르세요."); };
@@ -1046,8 +1048,12 @@ bXl.onclick = async () => {
     a.download = "경매_낙찰가_계산_" + day + ".csv"; a.click(); say("CSV로 내려받았습니다(엑셀에서 열림)");
   }
 };
+// 디스코에서 넘어온 수집 자료(#rt=...) → 실거래가 분석에 넣고 의미 있는 거래는 매도가 분석 ③으로, 탭도 열어 둔다
+try { const h = location.hash.match(/^#rt=(.+)$/); if (h) { const j = JSON.parse(decodeURIComponent(h[1])); S.rt = {at: j.at, items: j.items}; S.rtN = rtSync();
+  localStorage.setItem(KEY, JSON.stringify(S)); history.replaceState({}, "", location.pathname + location.search); window.__rtOpen = 1; } } catch (e) { console.error(e); }
 fillSaved("");
 render();
+if (window.__rtOpen) { const b = document.querySelector('[data-p="p-rt"]'); if (b) b.click(); const mm = document.getElementById("rtMsg"); if (mm) mm.textContent += ` · 의미 있는 실거래 ${S.rtN || 0}건을 '매도가 분석' ③ 실거래에 넣었습니다`; }
 // 11/3: 창이 둘 열려 있으면 예전 창이 저장하면서 새 창에서 넣은 사건번호를 덮어썼다 → 다른 창에서 저장하면 이 창도 바로 따라간다
 window.addEventListener("storage", e => {
   if (e.key === KEY && e.newValue) { S = Object.assign({}, DEF, JSON.parse(e.newValue)); render(); }
