@@ -880,6 +880,11 @@ bXl.onclick = async () => {
 };
 fillSaved("");
 render();
+// 11/3: 창이 둘 열려 있으면 예전 창이 저장하면서 새 창에서 넣은 사건번호를 덮어썼다 → 다른 창에서 저장하면 이 창도 바로 따라간다
+window.addEventListener("storage", e => {
+  if (e.key === KEY && e.newValue) { S = Object.assign({}, DEF, JSON.parse(e.newValue)); render(); }
+  if (e.key === LKEY) fillSaved(saved.value);
+});
 </script>
 </body>
 </html>
