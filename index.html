@@ -164,7 +164,7 @@ textarea.paste{width:100%;height:90px;border:1px dashed #9aa6b8;border-radius:6p
     <p>· 개인이 산 집의 대출 이자는 양도세 필요경비로 인정되지 않습니다(순수익에서만 뺍니다).</p>
     <p class="h">6. '매도가 분석' — 주변 매물·실거래로 예상 매도가 추천</p>
     <p>· ① 이 물건: 건축물대장·경매 개요에서 전용면적(㎡)·준공 연도·층·꼭대기 층 여부를 적습니다.</p>
-    <p>· ② 주변 매물: 네이버 부동산 매물 캡처를 노란 칸에 붙여 넣거나(Ctrl+V, 접속 키가 있는 화면만), 매물 목록 글자를 복사해 붙여 넣고 '붙여 넣은 글자 읽기'를 누릅니다(누구나 가능 — 목록을 끝까지 내려 매물을 다 띄운 뒤 Ctrl+A → Ctrl+C). 지하층·이 물건보다 준공이 5년 넘게 앞선 매물·면적 차이가 큰 매물은 자동으로 빠지고 이유가 적힙니다. 체크로 넣고 뺄 수 있습니다.</p>
+    <p>· ② 주변 매물: 네이버 부동산 매물 캡처를 노란 칸에 붙여 넣거나(Ctrl+V, 접속 키가 있는 화면만), 매물 목록 글자를 복사해 붙여 넣고 '붙여 넣은 글자 읽기'를 누릅니다(누구나 가능 — 목록을 끝까지 내려 매물을 다 띄운 뒤 Ctrl+A → Ctrl+C). 지하층·이 물건보다 준공이 5년 넘게 앞선 매물·면적 차이가 큰 매물은 자동으로 빠지고 이유가 적힙니다. 준공을 모르는 매물은 '준공 확인 필요'로 빠져 있다가, 노란 준공 칸에 연도를 넣으면 바로 다시 판단합니다(이 기기에 자동 저장 — 같은 목록을 다시 붙여 넣어도 넣은 연도는 그대로). 체크로 넣고 뺄 수 있습니다.</p>
     <p>· ③ 실거래: 같은 건물·인근의 실제 거래(감정평가서 거래사례, 국토부 실거래가)를 적습니다. 네이버에서 매물 상세창을 연 채로 복사하면 그 매물의 최근 3년 실거래가 자동으로 들어갑니다 — 거래 뒤 오른 시세만큼 '시점수정(%)'을 고쳐 주세요.</p>
     <p class="h">7. 호가 할인율이란</p>
     <p>· 네이버 매물 가격은 파는 사람이 "이 정도 받고 싶다"고 부른 값(호가)이고, 실제로는 협상해서 그보다 낮게 팔립니다. 그 차이를 몇 %로 볼지 정하는 칸입니다. 8%면 매물 가격에서 8%를 깎아 '실제로 팔릴 값'으로 봅니다.</p>
@@ -319,6 +319,7 @@ function autoOff(x, m) {
   if (isB(x.f)) return "지하층";
   // 준공: 이 물건 준공 −5년 이후면 비슷한 연식으로 넣는다 (11/3 대표님). 이 물건 준공을 모르면 연식으로 빼지 않는다
   if (x.y && m.year && x.y < m.year - 5) return `준공 차이 ${m.year - x.y}년`;
+  if (!x.y && m.year) return "준공 확인 필요";   // 11/3 대표님: 모르는 준공은 대표님이 찾아 넣으면 그때 자동 판단
   const tp = m.area / PY; if (tp && x.a && (x.a > tp * 1.6 || x.a < tp * 0.6)) return "면적 차이 큼";
   return "";
 }
@@ -410,8 +411,9 @@ async function mkOcr(files) {
     if (!r.ok) throw new Error(r.msg || "매물을 읽지 못했습니다");
     mkNewArea((r.rows || []).map(x => x.n));
     const m = MK(), key = x => [x.p, x.a, x.f, x.y].join("|"), have = new Set(m.list.map(key)); let n = 0, dup = 0;
+    const k3 = x => [x.n, x.p, x.f].join("|"), mine = new Set(m.list.filter(x => x.y).map(k3));   // 준공을 손으로 넣은 매물은 그대로 둔다
     (r.rows || []).forEach(x => { const row = {n: String(x.n || "매물").slice(0, 30), p: num(x.p), a: num(x.a), f: String(x.f || ""), y: num(x.y), on: null};
-      if (!row.p) return; if (have.has(key(row))) { dup++; return; } m.list.push(row); have.add(key(row)); n++; });
+      if (!row.p) return; if (have.has(key(row)) || (!row.y && mine.has(k3(row)))) { dup++; return; } m.list.push(row); have.add(key(row)); n++; });
     // 감정평가서 거래사례·국토부 실거래 → ③ 실거래 (10/20 대표님: 감정평가서를 넣으면 실거래가 자동으로)
     const dk = d => [d.n, d.d, d.p].join("|"), dh = new Set(m.deals.map(dk)); let dn = 0;
     (r.deals || []).forEach(d => { const x = {n: String(d.n || "거래사례").slice(0, 40), p: num(d.p), a: num(d.a), d: String(d.d || ""), adj: num(d.adj)};
@@ -506,7 +508,7 @@ function mkRender() {
   const rows = m.list.map((x, i) => { const why = autoOff(x, m), on = x.on === null || x.on === undefined ? !why : x.on;
     return `<tr class="${on ? "" : "off"}"><td style="text-align:center"><input type="checkbox" data-on="${i}" ${on ? "checked" : ""} style="width:auto"></td>` +
       `<td><input class="l" data-li="${i}" data-f="n" value="${esc(x.n)}"></td><td><input data-li="${i}" data-f="p" value="${x.p || ""}"></td><td><input data-li="${i}" data-f="a" value="${x.a || ""}"></td>` +
-      `<td><input data-li="${i}" data-f="f" value="${esc(x.f)}"></td><td><input data-li="${i}" data-f="y" value="${x.y || ""}"></td><td>${x.y && m.year ? (x.y - m.year > 0 ? "+" : "") + (x.y - m.year) + "년" : "-"}</td>` +
+      `<td><input data-li="${i}" data-f="f" value="${esc(x.f)}"></td><td><input data-li="${i}" data-f="y" value="${x.y || ""}" placeholder="입력"${x.y ? "" : ' style="background:#fff3c4"'}></td><td>${x.y && m.year ? (x.y - m.year > 0 ? "+" : "") + (x.y - m.year) + "년" : "-"}</td>` +
       `<td>${x.p && x.a ? man(x.p / x.a) : "-"}</td><td>${x.p && x.a ? man(x.p / x.a / PY) : "-"}</td><td><b>${x.p && x.a && r.tp ? man(x.p / x.a * r.tp) : "-"}</b></td><td class="why">${why}${why && on ? " (넣음)" : ""}</td><td><button class="btn" data-del="${i}" style="margin:0;padding:2px 7px">✕</button></td></tr>`; }).join("");
   mkList.innerHTML = `<table class="t" style="margin-bottom:6px"><tr><th>② 주변 매물 (네이버 부동산 등) <small>· ${m.list.length}건</small></th></tr></table>` +
     `<textarea class="paste" id="mkPaste" placeholder="여기를 누르고 네이버 부동산 매물 캡처를 붙여 넣으세요 (Ctrl+V) — 이미지·PDF를 끌어다 놓아도 됩니다. AI가 가격·전용평·층·연식을 읽어 아래 표에 넣고 추천 금액을 다시 계산합니다(1~3분). 매물 목록 글자를 복사해 붙여 넣어도 됩니다."></textarea>` +
@@ -530,7 +532,9 @@ function mkRender() {
     const key = x => [x.p, x.a, x.f, x.y].join("|"), have = new Set(m.list.map(key)); let n = 0, fix = 0;
     // 예전에 ㎡를 평으로 잘못 읽어 넣은 같은 매물(이름·가격·층·준공 같음)은 면적만 바로잡는다 (11/3)
     const k2 = x => [x.n, x.p, x.f, x.y].join("|"), old = new Map(m.list.map(x => [k2(x), x]));
-    got.forEach(x => { const o = old.get(k2(x)); if (o && !have.has(key(x)) && Math.abs(o.a - x.a * PY) < 1) { o.a = x.a; have.add(key(x)); fix++; return; }
+    const k3 = x => [x.n, x.p, x.f].join("|"), mine = new Map(m.list.filter(x => x.y).map(x => [k3(x), x]));
+    got.forEach(x => { if (!x.y && mine.has(k3(x))) { const o = mine.get(k3(x)); if (Math.abs(o.a - x.a * PY) < 1) o.a = x.a; return; }   // 준공을 손으로 넣은 매물
+      const o = old.get(k2(x)); if (o && !have.has(key(x)) && Math.abs(o.a - x.a * PY) < 1) { o.a = x.a; have.add(key(x)); fix++; return; }
       if (!have.has(key(x))) { m.list.push(x); have.add(key(x)); n++; } });
     const dk = d => [d.n, d.d, d.p].join("|"), dh = new Set(m.deals.map(dk)); let dn = 0;
     got.deals.forEach(d => { if (!dh.has(dk(d))) { m.deals.push(d); dh.add(dk(d)); dn++; } });
